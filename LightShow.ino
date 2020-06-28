@@ -9,10 +9,11 @@ AlaLedRgb rgbStrip5;
 AlaLedRgb rgbStrip6;
 AlaLedRgb rgbStrip7;
 AlaLedRgb rgbStrip8;
+AlaLedRgb rgbStrip9;
 
-#define MAXSTRIPS 8
+#define MAXSTRIPS 9
 
-AlaLedRgb *allstrips[8] = {
+AlaLedRgb *allstrips[9] = {
     &rgbStrip1,
     &rgbStrip2,
     &rgbStrip3,
@@ -20,7 +21,8 @@ AlaLedRgb *allstrips[8] = {
     &rgbStrip5,
     &rgbStrip6,
     &rgbStrip7,
-    &rgbStrip8
+    &rgbStrip8,
+    &rgbStrip9
 };
 
 int animation = 0;
@@ -123,39 +125,64 @@ int durationList[3] = {
     5000
 };
 
-int allPins[] = { 39, 41, 43, 45, 38, 40, 42, 44};
+int allPins[] = { 39, 41, 43, 45, 38, 40, 42, 44, 46};
+
+int curStrip = 0;
+int curAnim[4] = {0};
+int curDuration[4] = {1000,1000,1000,1000};
+
+
+/*  *********************************************************************
+    *  setup()
+    *  
+    *  Arduino SETUP routine - perform once-only initialization.
+    ********************************************************************* */
+
 
 
 void setup()
 {
     int i;
 
+    // Set up the regular serial port
     Serial.begin(115200);
-  delay(4000);
-  Serial3.begin(31250);
+    delay(1000);
+
+    Serial.println("Lightshow at your command!");
+
+    // Set up the MIDI port
+    Serial3.begin(31250);
 
 
   for (i = 0; i < MAXSTRIPS; i++) {
       allstrips[i]->initWS2812(30, allPins[i]);
-    allstrips[i]->setAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
+      allstrips[i]->setAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
   }
 
 }
 
-int curStrip = 0;
+
+/*  *********************************************************************
+    *  MIDI stuff
+    ********************************************************************* */
+
 
 #define MIDI_CMD 0
 #define MIDI_NOTE 1
 #define MIDI_VEL 2
 int midiState = MIDI_CMD;
 
+//
+// These variables will hold the last received MIDI command,
+//
 uint8_t midiCmd;
 uint8_t midiNote;
 uint8_t midiVel;
 
-int curAnim[4] = {0};
-int curDuration[4] = {1000,1000,1000,1000};
 
+//
+// controlChange:  Called when we receive a MIDI CONTROL CHANGE command
+// 
 
 void controlChange(uint8_t ctl,uint8_t val)
 {
@@ -216,6 +243,12 @@ void controlChange(uint8_t ctl,uint8_t val)
 
 }
 
+
+
+//
+// noteON : Process a MIDI NOTE ON
+//
+
 void noteOn(uint8_t note, uint8_t vel)
 {
     if ((note < 36) || (note > 84)) {
@@ -226,6 +259,10 @@ void noteOn(uint8_t note, uint8_t vel)
     note %= 8;
     allstrips[note]->setAnimation(pulseOn);
 }
+
+//
+// noteOFF : Process a MIDI NOTE OFF
+//
 
 void noteOff(uint8_t note, uint8_t vel)
 {
@@ -239,6 +276,10 @@ void noteOff(uint8_t note, uint8_t vel)
 
     
 }
+
+//
+// printMidi : print out a received MIDI command to the serial port (for debug)
+//
 
 void printMidi(void)
 {
@@ -295,6 +336,11 @@ void printMidi(void)
     }
 }
 
+
+//
+// procMidi: Handle a byte received from the MIDI port
+//
+
 void procMidi(uint8_t c)
 {
     if (c & 0x80) {
@@ -316,6 +362,15 @@ void procMidi(uint8_t c)
             break;
     }
 }
+
+
+/*  *********************************************************************
+    *  loop()
+    *  
+    *  This is the main Arduino loop.  Handle characters 
+    *  received from either the MIDI or the serial port
+    *  and change the animations accordingly
+    ********************************************************************* */
 
 void loop()
 {
@@ -349,13 +404,22 @@ void loop()
         if (curStrip >= MAXSTRIPS) curStrip = 0;
     }
 
-    for (i = 0; i < MAXSTRIPS; i++) {
-        allstrips[i]->runAnimation();
-    }
+    //
+    // Process received MIDI bytes
+    //
 
     if (Serial3.available()) {
         procMidi(Serial3.read());
     }
+
+    //
+    // Run animations on all strips
+    //
+
+    for (i = 0; i < MAXSTRIPS; i++) {
+        allstrips[i]->runAnimation();
+    }
+
 
 }
 
