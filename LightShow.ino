@@ -386,6 +386,7 @@ void loop()
             case '5':  curStrip = 5; break;
             case '6':  curStrip = 6; break;
             case '7':  curStrip = 7; break;
+            case '8':  curStrip = 8; break;
             case 'a':
                 animation++;
                 updateAnimation();
