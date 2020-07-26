@@ -603,6 +603,6 @@ void updateAnimation()
 {
     Serial.print("Updating strip "); Serial.print(curStrip); Serial.print(" to animation ");
     Serial.print(animation); Serial.print(" with duration "); Serial.print(durationList[duration%3]);
-    Serial.print(" and pallette "); Serial.println(palette);
+    Serial.print(" and palette "); Serial.println(palette);
     allstrips[curStrip]->setAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
 }
