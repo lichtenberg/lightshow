@@ -1,3 +1,7 @@
+//
+// Lightshow Arduino Sketch
+//
+
 #include "src/ALA/AlaLedRgb.h"
 
 #include "xtimer.h"
