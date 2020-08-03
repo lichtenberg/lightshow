@@ -1,5 +1,6 @@
 //
 // Lightshow Arduino Sketch
+// (C) 2020 Mitch Lichtenberg (both of them).
 //
 
 #include "src/ALA/AlaLedRgb.h"
@@ -8,7 +9,8 @@
 
 
 /*  *********************************************************************
-    *  MIDI note numbers
+    *  MIDI note numbers (from the MIDI specification)
+    *  See: https://djip.co/blog/logic-studio-9-midi-note-numbers
     ********************************************************************* */
 
 // Second octave (below middle C).  We don't bother with sharps and flats
@@ -53,8 +55,37 @@
 #define NOTE_A5         81
 #define NOTE_B5         83
 
+// Sixth octave (above middle C)
+
+#define NOTE_C6         84
+#define NOTE_D6         86
+#define NOTE_E6         87
+#define NOTE_F6         88
+#define NOTE_G6         90
+#define NOTE_A6         93
+#define NOTE_B6         95
+
+// Seventh octave (above middle C)
+
+#define NOTE_C7         96
+#define NOTE_D7         98
+#define NOTE_E7         100
+#define NOTE_F7         101
+#define NOTE_G7         103
+#define NOTE_A7         105
+#define NOTE_B7         107
+
+// Eighth octave (above middle C)
+
+#define NOTE_C8         108
+#define NOTE_D8         110
+#define NOTE_E8         112
+#define NOTE_F8         113
+#define NOTE_G8         115
+
+
 /*  *********************************************************************
-    *  MIDI messages
+    *  MIDI messages (from the MIDI specification)
     ********************************************************************* */
 
 #define MIDI_MSG_NOTE_OFF       0x08
@@ -71,6 +102,8 @@
 
 /*  *********************************************************************
     *  MIDI receive state machine
+    *  This is for our Arduino sketch, it keeps track of 
+    *  where we are as we receive each MIDI message
     ********************************************************************* */
 
 #define MIDI_RXSTATE_CMD 0              // next byte is a command
@@ -105,6 +138,9 @@ static char blinky_onoff = 0;
     *  LED Strips
     ********************************************************************* */
 
+#define MAXSTRIPS 9
+
+AlaLedRgb rgbStrip0;
 AlaLedRgb rgbStrip1;
 AlaLedRgb rgbStrip2;
 AlaLedRgb rgbStrip3;
@@ -113,11 +149,26 @@ AlaLedRgb rgbStrip5;
 AlaLedRgb rgbStrip6;
 AlaLedRgb rgbStrip7;
 AlaLedRgb rgbStrip8;
-AlaLedRgb rgbStrip9;
 
-#define MAXSTRIPS 9
 
-AlaLedRgb *allstrips[9] = {
+//
+// This array is an "array of pointers" to the above LED strip ALA objects.
+// The reason we do this is so that we can
+// make loops that operate on more than one strip at a time.
+//
+//  allstrips[0] would therefore correspond to rgbStrip0,
+//  allstrips[1] would therefore correspond to rgbStrip1,  and so on.
+//
+// Having them in an array means we can use "for" loops and such
+// to do things to strips in bunches or all at the same time.
+//
+// Remember, thse aren't actually strips, they just "point" at the strips.
+//
+// Note that C arrays are 0 based, so our strips go from 0..8.
+// 
+
+AlaLedRgb *allstrips[MAXSTRIPS] = {
+    &rgbStrip0,
     &rgbStrip1,
     &rgbStrip2,
     &rgbStrip3,
@@ -125,14 +176,37 @@ AlaLedRgb *allstrips[9] = {
     &rgbStrip5,
     &rgbStrip6,
     &rgbStrip7,
-    &rgbStrip8,
-    &rgbStrip9
+    &rgbStrip8
 };
+
+//
+// This array contains the Arduino pin numbers that
+// correspond to each LED strip.
+//
+// There are 9 entries, representing each spoke (rgbStrip0 to rgbStrip7)
+// plus the last one (on pin 46) being the LED ring (rgbStrip8)
+//
+
+// In the setup routine, we will make rgbStrip0 correspond to allPins[0] (which is 39),
+// and rgbStrip1 correspond to allPins[1], which is 41, etc.
+// using a nice 'for' loop to do them all at once.
+
+int allPins[MAXSTRIPS] = { 39, 41, 43, 45, 38, 40, 42, 44, 46};
+
+//
+// Similarly to allPins, allLengths[] is an array that tells us the size
+// of each strip. For the rig on my desk, there are 30 LEDs per "spoke" and the 60 LED ring
+// So, allLengths[0..7] = 30, and allLengths[8] is 60.
+//
+
+int allLengths[MAXSTRIPS] = { 30, 30, 30, 30, 30, 30, 30, 30, 60 };
+
 
 
 /*  *********************************************************************
     *  Amimation List.  This will eventually go away when we 
     *  assign notes to animations.
+    *  TEST PROGRAM ONLY
     ********************************************************************* */
 
 int animation = 0;
@@ -184,25 +258,13 @@ int animList[] = {
 };
 
 
-#if 0
-int animList[] = {
-    ALA_ON,
-    ALA_SOUNDPULSE,
-    ALA_SPARKLE,
-    ALA_SPARKLE2,
-    ALA_MOVINGBARS,
-    ALA_PIXELSHIFTRIGHT,
-    ALA_PIXELSMOOTHSHIFTRIGHT,
-    ALA_COMET,
-    ALA_COMETCOL,
-    ALA_GLOW,
-    ALA_CYCLECOLORS,
-    ALA_FADECOLORS,
-    ALA_FIRE,
-    ALA_BOUNCINGBALLS,
-    ALA_BUBBLES
-};
-#endif
+
+
+/*  *********************************************************************
+    *  Test progran stuff
+    *  This is just for our test program, not part of the MIDI thing.
+    ********************************************************************* */
+
 
 // Red,Green,Blue sequence
 AlaColor alaPalWhite_[] = { 0xFFFFFF };
@@ -235,11 +297,11 @@ int durationList[3] = {
     5000
 };
 
-int allPins[] = { 39, 41, 43, 45, 38, 40, 42, 44, 46};
 
 int curStrip = 0;
 int curAnim[4] = {0};
 int curDuration[4] = {1000,1000,1000,1000};
+
 
 
 /*  *********************************************************************
@@ -254,29 +316,61 @@ void setup()
 {
     int i;
 
+    //
+    // Set up our "timer", which lets us check to see how much time
+    // has passed.  We might not use it for much, but it is handy to have.
+    // For now, we'll mostly use it to blink the LED on the Arduino
+    //
+
     TIMER_UPDATE();                 // remember current time
     TIMER_SET(blinky_timer,500);    // set timer for first blink
-    pinMode(PIN_LED,OUTPUT);
+    pinMode(PIN_LED,OUTPUT);        // set the on-board LED to an output.
 
+    //
     // Set up the regular serial port
+    // The regular serial port can be used to show debugging print messages or
+    // to receive characters from the PC that the Arduino software is on.
+    //
     Serial.begin(115200);
     delay(1000);                    // this delay is to make sure the serial monitor connects.
-
     Serial.println("Lightshow at your command!");
 
-    // Set up the MIDI port.  MIDI ports run at 31250 baud.
+    //
+    // Set up the MIDI port.  MIDI ports run at 31250 baud but are otherwise just plain
+    // serial ports!
+    //
     Serial3.begin(31250);
 
 
-    // By default, run the rainbow animation on all strips.
+    //
+    // Initialize all of the strips.  Remember the array we created?  Now we can use it to
+    // set up all of the strips in a loop.  Here is where we set up each strip with its length
+    // and number of LEDs.
+    //
     for (i = 0; i < MAXSTRIPS; i++) {
-        allstrips[i]->initWS2812(30, allPins[i]);
-        allstrips[i]->setAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
+
+        // Initialize the strip
+        allstrips[i]->initWS2812(allLengths[i], allPins[i]);
+        
+        // By default, run the rainbow animation on all strips.
+        // We can change this later if we want the art exhibit to start quietly.
+        allstrips[i]->setAnimation(ALA_OFF /*animList[animation%NUMANIM]*/, durationList[duration%3], paletteList[palette%3]);
     }
 
 }
 
 
+/*  *********************************************************************
+    *  MIDI Message Routines.
+    *  
+    *  The routines in this section are called for the various MIDI
+    *  messages that we receive.
+    *  
+    *  The most important ones that we are likely to deal with are
+    *  "Note ON" and "Note OFF", but we can handle other
+    *  message types just in case we want to make them 
+    *  meaningful in the future.
+    ********************************************************************* */
 
 //
 // controlChange:  Called when we receive a MIDI CONTROL CHANGE command
@@ -389,6 +483,8 @@ void noteOff(uint8_t chan, uint8_t note, uint8_t vel)
 
 //
 // printMidi : print out a received MIDI command to the serial port (for debug)
+// It is not used for anything else, see handleMidiCommand below for how we actually
+// "process" a MIDI message.
 //
 
 void printMidi(void)
@@ -482,27 +578,55 @@ void handleMidiCommand(void)
 
 //
 // procMidi: process a byte received from the MIDI port.  When we have
-// a complete command, we will process it.
+// a complete command, we will process it.  This routine forms something called
+// a "state machine", which uses a variable to tell us what data we expect to
+// recieve next.
+// 
+// MIDI messages look something like this:
+//
+//     <command> <note> <velocity>       That's 3 bytes.
+//
+// So, if you received  3 hex bytes   "93"  "40" "46"
+// that would mean "Note ON", "MIDI Channel 3", with a note number of E3 and a velocity of 100 (decimal).
+// As the bytes come in from the serial port, we need to know which piece is next - the command, the note,
+// or the velocity.  That's what "midiState" is for, it tells what *state* we are in.   This value changes
+// and also tells us when we have a complete MIDI message to process.
+//
+// MIDI has some shortcuts to handle pressing many notes at once, but this is basically what
+// all MIDI messages look like.
 //
 
 void procMidi(uint8_t c)
 {
+    //
+    // The upper bit is always set if this is a MIDI command.   If it is not set, then
+    // keep receiving notes using the previous command.   This is the shortcut mentioned above.
+    //
     if (c & MIDI_MSG_COMMAND) {
         midiCmd = c;
         midiState = MIDI_RXSTATE_NOTE;
         return;
     }
+
+    //
+    // Otherwise, depending on what state we are in, decide what the byte from the
+    // serial stream is for.
+    //
     
     switch (midiState) {
         case MIDI_RXSTATE_CMD:
+            // If it was a command, we already remembered it from the 'if' statement above.
             break;
             
         case MIDI_RXSTATE_NOTE:
+            // If it is a note, remember the note, and set the state to say the next byte will be 'velocity'
             midiNote = c;
             midiState = MIDI_RXSTATE_VEL;
             break;
             
         case MIDI_RXSTATE_VEL:
+            // If it's the velocity, then we go back to 'command' again.   Also, if it is
+            // velocity, we have a complete MIDI messsage so we can start handling it.
             midiVel = c;
             midiState = MIDI_RXSTATE_CMD;
 

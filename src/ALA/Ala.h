@@ -42,7 +42,11 @@ along with The Arduino ALA library.  If not, see
 #define ALA_SPARKLE2 106
 #define ALA_STROBO 107
 
+// ----------------------------------------------------------------------------------
+// New ALA sequences for art project
 #define ALA_SOUNDPULSE 108
+
+// ----------------------------------------------------------------------------------
 
 #define ALA_CYCLECOLORS 151
 
