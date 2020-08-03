@@ -354,7 +354,7 @@ void setup()
         
         // By default, run the rainbow animation on all strips.
         // We can change this later if we want the art exhibit to start quietly.
-        allstrips[i]->setAnimation(ALA_OFF /*animList[animation%NUMANIM]*/, durationList[duration%3], paletteList[palette%3]);
+        allstrips[i]->setAnimation(ALA_IDLEWHITE /*animList[animation%NUMANIM]*/, durationList[duration%3], paletteList[palette%3]);
     }
 
 }

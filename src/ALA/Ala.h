@@ -45,6 +45,7 @@ along with The Arduino ALA library.  If not, see
 // ----------------------------------------------------------------------------------
 // New ALA sequences for art project
 #define ALA_SOUNDPULSE 108
+#define ALA_IDLEWHITE 109
 
 // ----------------------------------------------------------------------------------
 

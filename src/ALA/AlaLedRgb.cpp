@@ -257,7 +257,9 @@ void AlaLedRgb::setAnimationFunc(int animation)
         case ALA_STROBO:                animFunc = &AlaLedRgb::strobo;                break;
         case ALA_CYCLECOLORS:           animFunc = &AlaLedRgb::cycleColors;           break;
 
+        // New sequences for art project
         case ALA_SOUNDPULSE:            animFunc = &AlaLedRgb::soundPulse;            break;
+        case ALA_IDLEWHITE:             animFunc = &AlaLedRgb::idleWhite;             break;
 
         case ALA_PIXELSHIFTRIGHT:       animFunc = &AlaLedRgb::pixelShiftRight;       break;
         case ALA_PIXELSHIFTLEFT:        animFunc = &AlaLedRgb::pixelShiftLeft;        break;
@@ -606,6 +608,16 @@ void AlaLedRgb::cycleColors()
     for(int x=0; x<numLeds; x++)
     {
         leds[x] = palette.colors[t];
+    }
+}
+
+void AlaLedRgb::idleWhite()
+{
+    AlaColor c = AlaColor(10,10,10);    // a dim white
+
+    for(int x=0; x<numLeds; x++)
+    {
+        leds[x] = c;
     }
 }
 

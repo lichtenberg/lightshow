@@ -65,7 +65,9 @@ private:
     void strobo();
     void cycleColors();
 
+    // New animations for art project
     void soundPulse();
+    void idleWhite();
 
     void pixelShiftRight();
     void pixelShiftLeft();
