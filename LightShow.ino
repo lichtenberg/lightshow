@@ -140,7 +140,7 @@ static char blinky_onoff = 0;
 
 #define MAXSTRIPS 9
 
-AlaLedRgb rgbStrip0;
+AlaLedRgb rgbStrip0;            // These are the spokes
 AlaLedRgb rgbStrip1;
 AlaLedRgb rgbStrip2;
 AlaLedRgb rgbStrip3;
@@ -148,7 +148,46 @@ AlaLedRgb rgbStrip4;
 AlaLedRgb rgbStrip5;
 AlaLedRgb rgbStrip6;
 AlaLedRgb rgbStrip7;
-AlaLedRgb rgbStrip8;
+AlaLedRgb rgbStrip8;            // This is the ring
+
+//
+// Constants to define each spoke
+// These are "bit masks", meaning there is exactly one bit set in each of these
+// numbers.  By using a bit mask, we can conveniently represent sets of small numbers
+// by treating each bit to mean "I am in this set".
+//
+// So, if you have a binary nunber 00010111, then bits 0,1,2, and 4 are set.
+// You could therefore use the binary number 00010111, which is 11 in decimal,
+// to mean "the set of 0, 1, 2, and 4"
+//
+// Define some shorthands for sets of strips.  We can add as many
+// as we want here.
+//
+
+#define SPOKE0  (1 << 0)        // Spokes, clockwise from top
+#define SPOKE1  (1 << 1)
+#define SPOKE2  (1 << 2)
+#define SPOKE3  (1 << 3)
+#define SPOKE4  (1 << 4)
+#define SPOKE5  (1 << 5)
+#define SPOKE6  (1 << 6)
+#define SPOKE7  (1 << 7)
+#define LEDRING (1 << 8)
+
+//
+// Constants to represent groups of spokes
+// 
+//
+
+#define ALLSPOKES (SPOKE0 | SPOKE1 | SPOKE2 | SPOKE3 | SPOKE4 | SPOKE5 | SPOKE6 | SPOKE7)
+#define ALLSTRIPS (ALLSPOKES | LEDRING)
+#define EVENSPOKES (SPOKE0 | SPOKE2 | SPOKE4 | SPOKE6)
+#define ODDSPOKES (SPOKE1 | SPOKE3 | SPOKE5 | SPOKE7)
+
+//
+// Additional sets we might want to define:
+// LEFTSPOKES, RIGHTSPOKES, TOPSPOKES, BOTTOMSPOKES
+//
 
 
 //
@@ -302,6 +341,54 @@ int curStrip = 0;
 int curAnim[4] = {0};
 int curDuration[4] = {1000,1000,1000,1000};
 
+/*  *********************************************************************
+    *  setAnimation(strips, animation, speed, palette)
+    *  
+    *  Sets a set of strips to a particular animation.  The list of
+    *  strips to be set is passed in as a "bitmask", which is a
+    *  number where each bit in the number represesents a particular
+    *  strip.  If bit 0 is set, we will operate on strip 0,  Bit 1 means
+    *  strip 1, and so on.   Therefore, if you pass in "10" decimal
+    *  for "strips", in binary that is 00001010, so setStrips will
+    *  set the animation for strips 1 and 3.  Using a bitmask is a 
+    *  convenient way to pass a set of small numbers as a single
+    *  value.
+    ********************************************************************* */
+
+void setAnimation(unsigned int strips, int animation, int speed, int palette)
+{
+    int i;
+
+    for (i = 0; i < MAXSTRIPS; i++) {
+        // the "1 << i" means "shift 1 by 'i' positions to the left.
+        // So, if i has the value 3, 1<<3 will mean the value 00001000 (binary)
+        // Next, the "&" operator is a bitwise AND - for each bit
+        // in "strips" we will AND that bit with the correspondig bit in (1<<i).
+        // allowing us to test (check) if that particular bit is set.
+        if ((strips & (1 << i)) != 0) {
+            allstrips[i]->setAnimation(animation, speed, paletteList[palette]);
+        }
+    }
+}
+
+/*  *********************************************************************
+    *  setSequence(strips, sequence)
+    *  
+    *  This is similar to setAnimation above, but sets an ALA "Sequence"
+    *  which is ALA's way of describing a chain of animations.
+    *  We might change the way this works
+    ********************************************************************* */
+
+void setSequence(unsigned int strips, AlaSeq *sequence)
+{
+    int i;
+
+    for (i = 0; i < MAXSTRIPS; i++) {
+        if ((strips & (1 << i)) != 0) {
+            allstrips[i]->setAnimation(sequence);
+        }
+    }
+}
 
 
 /*  *********************************************************************
@@ -352,9 +439,9 @@ void setup()
         // Initialize the strip
         allstrips[i]->initWS2812(allLengths[i], allPins[i]);
         
-        // By default, run the rainbow animation on all strips.
+        // By default, run the "idle white" animation on all strips.
         // We can change this later if we want the art exhibit to start quietly.
-        allstrips[i]->setAnimation(ALA_IDLEWHITE /*animList[animation%NUMANIM]*/, durationList[duration%3], paletteList[palette%3]);
+        allstrips[i]->setAnimation(ALA_IDLEWHITE, durationList[duration%3], paletteList[palette%3]);
     }
 
 }
