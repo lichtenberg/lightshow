@@ -104,12 +104,8 @@ int AlaLedRgb::getCurrentRefreshRate()
 }
 
 
-void AlaLedRgb::setAnimation(int animation, long speed, AlaColor color)
+void AlaLedRgb::forceAnimation(int animation, long speed, AlaColor color)
 {
-    // is there any change?
-    if (this->animation == animation && this->speed == speed && this->palette.numColors == 1 && this->palette.colors[0] == color)
-        return;
-
     // delete any previously allocated array
     if (pxPos!=NULL)
     { delete[] pxPos; pxPos=NULL; }
@@ -127,12 +123,18 @@ void AlaLedRgb::setAnimation(int animation, long speed, AlaColor color)
     animStartTime = millis();
 }
 
-void AlaLedRgb::setAnimation(int animation, long speed, AlaPalette palette)
+void AlaLedRgb::setAnimation(int animation, long speed, AlaColor color)
 {
     // is there any change?
-    if (this->animation == animation && this->speed == speed && this->palette == palette)
+    if (this->animation == animation && this->speed == speed && this->palette.numColors == 1 && this->palette.colors[0] == color)
         return;
 
+    forceAnimation(animation, speed, color);
+}
+
+
+void AlaLedRgb::forceAnimation(int animation, long speed, AlaPalette palette)
+{
     // delete any previously allocated array
     if (pxPos!=NULL)
     { delete[] pxPos; pxPos=NULL; }
@@ -147,6 +149,14 @@ void AlaLedRgb::setAnimation(int animation, long speed, AlaPalette palette)
     animStartTime = millis();
 }
 
+void AlaLedRgb::setAnimation(int animation, long speed, AlaPalette palette)
+{
+    // is there any change?
+    if (this->animation == animation && this->speed == speed && this->palette == palette)
+        return;
+
+    forceAnimation(animation, speed, palette);
+}
 
 void AlaLedRgb::setAnimation(AlaSeq animSeq[])
 {

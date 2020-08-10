@@ -46,6 +46,10 @@ public:
 
     void setAnimation(int animation, long speed, AlaColor color);
     void setAnimation(int animation, long speed, AlaPalette palette);
+
+    void forceAnimation(int animation, long speed, AlaColor color);
+    void forceAnimation(int animation, long speed, AlaPalette palette);
+
     void setAnimation(AlaSeq animSeq[]);
     int getAnimation();
 

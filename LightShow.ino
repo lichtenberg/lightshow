@@ -9,79 +9,97 @@
 
 
 /*  *********************************************************************
-    *  MIDI note numbers (from the MIDI specification)
+    *  MIDI note numbers (from the MIDI specification), but adjusted
+    *  for what Logic Pro calls the octaves.
     *  See: https://djip.co/blog/logic-studio-9-midi-note-numbers
+    *
+    *  Logic Pro's octaves are actually one lower than MIDI,
+    *  so C9 in the MIDI specification is called C8 on Logic Pro's
+    *  on screen keyboard.
+    *
+    *  The constants below reflect what Logic Pro calls them.
     ********************************************************************* */
 
 // Second octave (below middle C).  We don't bother with sharps and flats
-// These note names should match up with the names in the step sequencer
+// These note names should match up with the names in the piano roll sequencer
 // in Logic Pro X.
 
-#define NOTE_C2         36
-#define NOTE_D2         38
-#define NOTE_E2         40
-#define NOTE_F2         41
-#define NOTE_G2         43
-#define NOTE_A2         45
-#define NOTE_B2         47
+#define NOTE_C1         36
+#define NOTE_D1         38
+#define NOTE_E1         40
+#define NOTE_F1         41
+#define NOTE_G1         43
+#define NOTE_A1         45
+#define NOTE_B1         47
 
 // Third octave (also below Middle C)
 
-#define NOTE_C3         48
-#define NOTE_D3         50
-#define NOTE_E3         52
-#define NOTE_F3         53
-#define NOTE_G3         55
-#define NOTE_A3         57
-#define NOTE_B3         59
+#define NOTE_C2         48
+#define NOTE_D2         50
+#define NOTE_E2         52
+#define NOTE_F2         53
+#define NOTE_G2         55
+#define NOTE_A2         57
+#define NOTE_B2         59
 
 // Fourth octave (where Middle C is)
 
-#define NOTE_C4         60
-#define NOTE_D4         62
-#define NOTE_E4         64
-#define NOTE_F4         65
-#define NOTE_G4         67
-#define NOTE_A4         69
-#define NOTE_B4         71
+#define NOTE_C3         60
+#define NOTE_D3         62
+#define NOTE_E3         64
+#define NOTE_F3         65
+#define NOTE_G3         67
+#define NOTE_A3         69
+#define NOTE_B3         71
 
 // Fifth octave (above middle C)
 
-#define NOTE_C5         72
-#define NOTE_D5         74
-#define NOTE_E5         76
-#define NOTE_F5         77
-#define NOTE_G5         79
-#define NOTE_A5         81
-#define NOTE_B5         83
+#define NOTE_C4         72
+#define NOTE_D4         74
+#define NOTE_E4         76
+#define NOTE_F4         77
+#define NOTE_G4         79
+#define NOTE_A4         81
+#define NOTE_B4         83
 
 // Sixth octave (above middle C)
 
-#define NOTE_C6         84
-#define NOTE_D6         86
-#define NOTE_E6         87
-#define NOTE_F6         88
-#define NOTE_G6         90
-#define NOTE_A6         93
-#define NOTE_B6         95
+#define NOTE_C5         84
+#define NOTE_D5         86
+#define NOTE_E5         87
+#define NOTE_F5         88
+#define NOTE_G5         90
+#define NOTE_A5         93
+#define NOTE_B5         95
 
 // Seventh octave (above middle C)
 
-#define NOTE_C7         96
-#define NOTE_D7         98
-#define NOTE_E7         100
-#define NOTE_F7         101
-#define NOTE_G7         103
-#define NOTE_A7         105
-#define NOTE_B7         107
+#define NOTE_C6         96
+#define NOTE_D6         98
+#define NOTE_E6         100
+#define NOTE_F6         101
+#define NOTE_G6         103
+#define NOTE_A6         105
+#define NOTE_B6         107
 
 // Eighth octave (above middle C)
 
-#define NOTE_C8         108
-#define NOTE_D8         110
-#define NOTE_E8         112
-#define NOTE_F8         113
-#define NOTE_G8         115
+#define NOTE_C7         108
+#define NOTE_D7         110
+#define NOTE_E7         112
+#define NOTE_F7         113
+#define NOTE_G7         115
+#define NOTE_A7         117
+#define NOTE_B7         119
+
+// Ninth Octave (above middle C)
+
+#define NOTE_C8         120
+#define NOTE_D8         122
+#define NOTE_E8         124
+#define NOTE_F8         125
+#define NOTE_G8         127
+
 
 
 /*  *********************************************************************
@@ -176,7 +194,7 @@ AlaLedRgb rgbStrip8;            // This is the ring
 
 //
 // Constants to represent groups of spokes
-// 
+// It's easier than listing them out each time we use the same group.
 //
 
 #define ALLSPOKES (SPOKE0 | SPOKE1 | SPOKE2 | SPOKE3 | SPOKE4 | SPOKE5 | SPOKE6 | SPOKE7)
@@ -189,6 +207,10 @@ AlaLedRgb rgbStrip8;            // This is the ring
 // LEFTSPOKES, RIGHTSPOKES, TOPSPOKES, BOTTOMSPOKES
 //
 
+
+/*  *********************************************************************
+    *  Global Variables
+    ********************************************************************* */
 
 //
 // This array is an "array of pointers" to the above LED strip ALA objects.
@@ -324,12 +346,6 @@ AlaSeq pulseOff[] = {
 
 #define NUMANIM (sizeof(animList)/sizeof(int))
 
-AlaPalette paletteList[3] = {
-    alaPalRgb,
-    alaPalRainbow,
-    alaPalFire
-};
-
 int durationList[3] = {
     1000,
     2000,
@@ -340,6 +356,31 @@ int durationList[3] = {
 int curStrip = 0;
 int curAnim[4] = {0};
 int curDuration[4] = {1000,1000,1000,1000};
+
+/*  *********************************************************************
+    *  Palette List
+    *  
+    *  We do maintain a fixed set of palettes for the project.
+    *  It is easy to add more, and having a fixed set helps keep
+    *  the colors consistent.
+    *  
+    *  For now, our palette list is just the list of predefined
+    *  ones in ALA.
+    ********************************************************************* */
+
+#define PALETTE_RGB     0               // These are indicies into the array.
+#define PALETTE_RAINBOW 1
+#define PALETTE_FIRE    2
+#define PALETTE_WHITE   3
+
+AlaPalette paletteList[4] = {
+    alaPalRgb,
+    alaPalRainbow,
+    alaPalFire,
+    alaPalWhite
+};
+
+
 
 /*  *********************************************************************
     *  setAnimation(strips, animation, speed, palette)
@@ -366,7 +407,7 @@ void setAnimation(unsigned int strips, int animation, int speed, int palette)
         // in "strips" we will AND that bit with the correspondig bit in (1<<i).
         // allowing us to test (check) if that particular bit is set.
         if ((strips & (1 << i)) != 0) {
-            allstrips[i]->setAnimation(animation, speed, paletteList[palette]);
+            allstrips[i]->forceAnimation(animation, speed, paletteList[palette]);
         }
     }
 }
@@ -438,11 +479,11 @@ void setup()
 
         // Initialize the strip
         allstrips[i]->initWS2812(allLengths[i], allPins[i]);
-        
-        // By default, run the "idle white" animation on all strips.
-        // We can change this later if we want the art exhibit to start quietly.
-        allstrips[i]->setAnimation(ALA_IDLEWHITE, durationList[duration%3], paletteList[palette%3]);
     }
+
+    // By default, run the "idle white" animation on all strips.
+    // We can change this later if we want the art exhibit to start quietly.
+    setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, PALETTE_RGB);
 
 }
 
@@ -471,6 +512,13 @@ void setup()
 
 void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
 {
+
+    // The "#ifdef" means "if defined", and is a preprocessor directive.
+    // in "C" you can use this to comment out blocks of code in a big batch
+    // In this case, since "NOTUSED" is in fact not defined, the "ifdef" will
+    // be FALSE, and none of this code will be included.
+    
+#ifdef NOTUSED    
     int numAnim = sizeof(animList) / sizeof(int);
     int cvalue = (int) val;
     int newAnim;
@@ -499,7 +547,7 @@ void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
             snprintf(buf,sizeof(buf),"Strip %d anim is %d speed %d\n",stripId, curAnim[stripId],curDuration[stripId]);
             Serial.print(buf);
 
-            allstrips[stripId]->setAnimation(curAnim[stripId], curDuration[stripId], paletteList[palette%3]);
+            allstrips[stripId]->forceAnimation(curAnim[stripId], curDuration[stripId], paletteList[palette%3]);
             break;
 
         case 3:
@@ -520,11 +568,11 @@ void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
             Serial.print(buf);
 
 //            allstrips[stripId]->setAnimation(curAnim[stripId], curDuration[stripId], paletteList[palette%3]);
-            allstrips[stripId]->setAnimationSpeed(curDuration[stripId]);
+            allstrips[stripId]->forceAnimationSpeed(curDuration[stripId]);
             break;
     }
-            
 
+#endif
 
 }
 
@@ -533,39 +581,100 @@ void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
 //
 // noteON : Process a MIDI NOTE ON
 //
+// When we receive a noteOn message, we will start an animation.   Which animation
+// we start and which strips we start it on depend on the note number being sent.
+//
 
 void noteOn(uint8_t chan, uint8_t note, uint8_t vel)
 {
-    if ((note < 36) || (note > 84)) {
-        return;
+
+    // For now we will ignore the MIDI channel and the velocity,
+    // but we could definitely use these values to affect
+    // the animations in the future.
+
+    // we list the notes backwards from G8 (top octave) since that is how they
+    // are represented in Logic Pro's Piano Roll screen
+
+    // See the file "AnimationAssignments.numbers" for details on the assignments.
+  
+
+    switch (note) {
+        case NOTE_G8:
+            setAnimation(ALLSTRIPS, ALA_OFF, 1000, PALETTE_RGB);
+            break;
+
+        case NOTE_F8:
+            setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, PALETTE_RGB);
+            break;
+
+        case NOTE_E8:
+            setAnimation(LEDRING, ALA_OFF, 1000, PALETTE_RGB);
+            break;
+
+        case NOTE_D8:
+            break;
+
+        case NOTE_C8:
+            setAnimation(LEDRING, ALA_FADEINOUT, 1000, PALETTE_RGB);
+            break;
+
+        case NOTE_B7:
+            setAnimation(ALLSPOKES, ALA_MOVINGBARS, 1000, PALETTE_RGB);
+            break;
+
+        case NOTE_A7:
+            setAnimation(SPOKE0, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_G7:
+            setAnimation(SPOKE1, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_F7:
+            setAnimation(SPOKE2, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_E7:
+            setAnimation(SPOKE3, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_D7:
+            setAnimation(SPOKE4, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_C7:
+            setAnimation(SPOKE5, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_B6:
+            setAnimation(SPOKE6, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_A6:
+            setAnimation(SPOKE7, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+            break;
+
+        case NOTE_G6:
+            break;
+
     }
-
-
-    // Someday there will be a switch() statement here to run an animation
-    // based on which note (NOTE_C3, for example) we receive.
-    //
-    // So, if we get a NOTE_C3, we will change some set of animations right here.
     
-    note -= 36;
-    note %= 8;
-    allstrips[note]->setAnimation(pulseOn);
 }
 
 //
 // noteOFF : Process a MIDI NOTE OFF
 //
+// We don't use this (yet) - in the future we might turn OFF certain amimations
+// when the note is released, so it will play as long as a note is held
+// and stop afterwards.   For example, if we had a strobe light
+// effect or other fast animation, it might make sense to represent this
+// on the piano roll as a long sustained note where the strobe stops when the note
+// is lifted.
+//
 
 void noteOff(uint8_t chan, uint8_t note, uint8_t vel)
 {
-    if ((note < 36) || (note > 84)) {
-        return;
-    }
-
-    note -= 36;
-    note %= 8;
-    allstrips[note]->setAnimation(pulseOff);
-
-    
+    // Nothing happening here yet.
 }
 
 //
@@ -574,24 +683,54 @@ void noteOff(uint8_t chan, uint8_t note, uint8_t vel)
 // "process" a MIDI message.
 //
 
+void printNoteName(uint8_t num)
+{
+    char notename[5];
+    char *ptr = notename;
+    char sharp;
+    
+    int octave = (num / 12)-2;
+    int note = (num % 12);
+
+    *ptr++ = "CCDDEFFGGAAB"[note];
+    sharp = " # #  # # # "[note];
+    if (sharp != ' ') *ptr++ = sharp;
+    if (octave >= 0) {
+        *ptr++ = "0123456789X"[octave];
+    } else {
+        *ptr++ = '-';
+        if (octave == -1)  *ptr++ = '1';
+        if (octave == -2)  *ptr++ = '2';
+    }
+    *ptr++ = 0;
+    Serial.print(notename);
+}
+
 void printMidi(void)
 {
     uint8_t cmd = midiCmd >> 4;
     uint8_t chan = midiCmd & 0x0F;
     uint16_t bend;
 
+    // Hack: don't print note off messages.
+    //if (cmd == MIDI_MSG_NOTE_OFF) return;
+
     Serial.print("Ch "); Serial.print(chan, DEC); Serial.print(":");
     switch (cmd) {
         case MIDI_MSG_NOTE_ON:
             Serial.print("NoteOn  ");
             Serial.print(midiNote, DEC);
-            Serial.print(" V");
+            Serial.print(" (");
+            printNoteName(midiNote);
+            Serial.print(") V");
             Serial.println(midiVel, DEC);
             break;
         case MIDI_MSG_NOTE_OFF:
             Serial.print("NoteOff ");
             Serial.print(midiNote, DEC);
-            Serial.print(" V");
+            Serial.print(" (");
+            printNoteName(midiNote);
+            Serial.print(") V");
             Serial.println(midiVel, DEC);
             break;
         case MIDI_MSG_POLYTOUCH:
@@ -685,6 +824,8 @@ void handleMidiCommand(void)
 
 void procMidi(uint8_t c)
 {
+    // Warning: if you print stuff out, we can drop characters on the MIDI port!
+    //Serial.print("["); Serial.print(c,HEX); Serial.println("]");
     //
     // The upper bit is always set if this is a MIDI command.   If it is not set, then
     // keep receiving notes using the previous command.   This is the shortcut mentioned above.
@@ -721,7 +862,7 @@ void procMidi(uint8_t c)
             // MIDI command.  Print it out (Debug) and
             // act on it.
             
-            printMidi();                        // print it out (Debug)
+//            printMidi();                        // print it out (Debug)
             handleMidiCommand();                // do something with it.
                 
             break;
@@ -751,6 +892,9 @@ static void blinky(void)
     *  received from either the MIDI or the serial port
     *  and change the animations accordingly
     ********************************************************************* */
+
+uint8_t midibuffer[100];
+int midiptr = 0;
 
 void loop()
 {
@@ -784,6 +928,13 @@ void loop()
             case 'd':
                 duration++;
                 updateAnimation();
+                break;
+            case 'X':
+            {
+                int i;
+                for (i = 0; i< midiptr; i++) Serial.println(midibuffer[i],HEX);
+            }
+            break;
             default:
                 break;
         }
@@ -796,7 +947,13 @@ void loop()
     //
 
     if (Serial3.available()) {
-        procMidi(Serial3.read());
+        uint8_t c = Serial3.read();
+
+        // Capture the first 100 received MIDI messages and
+        // print them out when we enter an "X" command over the serial port.
+        if (midiptr < sizeof(midibuffer)) midibuffer[midiptr++] = c;
+        
+        procMidi(c);
     }
 
     //
@@ -815,5 +972,5 @@ void updateAnimation()
     Serial.print("Updating strip "); Serial.print(curStrip); Serial.print(" to animation ");
     Serial.print(animation); Serial.print(" with duration "); Serial.print(durationList[duration%3]);
     Serial.print(" and palette "); Serial.println(palette);
-    allstrips[curStrip]->setAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
+    allstrips[curStrip]->forceAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
 }
