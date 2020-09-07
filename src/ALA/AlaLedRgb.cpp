@@ -1,10 +1,6 @@
 #include "Ala.h"
 #include "AlaLedRgb.h"
 
-#include "ExtNeoPixel.h"
-#include "ExtTlc5940.h"
-
-
 
 
 AlaLedRgb::AlaLedRgb()
@@ -21,50 +17,6 @@ AlaLedRgb::AlaLedRgb()
 }
 
 
-void AlaLedRgb::initPWM(byte pinRed, byte pinGreen, byte pinBlue)
-{
-    byte *pins_ = (byte *)malloc(3);
-    pins_[0] = pinRed;
-    pins_[1] = pinGreen;
-    pins_[2] = pinBlue;
-
-    initPWM(1, pins_);
-}
-
-void AlaLedRgb::initPWM(int numLeds, byte *pins)
-{
-    this->driver = ALA_PWM;
-    this->numLeds = numLeds;
-    this->pins = pins;
-
-    for (int x=0; x<3*numLeds ; x++)
-    {
-        pinMode(pins[x], OUTPUT);
-    }
-
-    // allocate and clear leds array
-    leds = (AlaColor *)malloc(3*numLeds);
-    memset(leds, 0, 3*numLeds);
-}
-
-void AlaLedRgb::initTLC5940(int numLeds, byte *pins)
-{
-    this->driver = ALA_TLC5940;
-    this->numLeds = numLeds;
-    this->pins = pins;
-
-    // allocate and clear leds array
-    leds = (AlaColor *)malloc(3*numLeds);
-    memset(leds, 0, 3*numLeds);
-
-    // call Tlc.init only once
-    static bool isTlcInit = false;
-    if(!isTlcInit)
-    {
-        Tlc.init(0);
-        isTlcInit=true;
-    }
-}
 
 void AlaLedRgb::initWS2812(int numLeds, byte pin, byte type)
 {
@@ -214,31 +166,7 @@ bool AlaLedRgb::runAnimation()
     if (animFunc != NULL)
         (this->*animFunc)();
 
-    // update leds
-    if(driver==ALA_PWM)
-    {
-        for(int i=0; i<numLeds; i++)
-        {
-            int j = 3*i;
-            // use an 8 bit shift to divide by 256
-            analogWrite(pins[j],   (leds[i].r*maxOut.r)>>8);
-            analogWrite(pins[j+1], (leds[i].g*maxOut.g)>>8);
-            analogWrite(pins[j+2], (leds[i].b*maxOut.b)>>8);
-        }
-    }
-    else if(driver==ALA_TLC5940)
-    {
-        // TLC5940 maximum output is 4095 so shifts only 4 bits
-        for(int i=0; i<numLeds; i++)
-        {
-            int j = 3*i;
-            Tlc.set(pins[j],   (leds[i].r*maxOut.r)>>4);
-            Tlc.set(pins[j+1], (leds[i].g*maxOut.g)>>4);
-            Tlc.set(pins[j+2], (leds[i].b*maxOut.b)>>4);
-        }
-        Tlc.update();
-    }
-    else if(driver==ALA_WS2812)
+    if(driver==ALA_WS2812)
     {
         // this is not really so smart...
         for(int i=0; i<numLeds; i++)

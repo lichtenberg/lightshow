@@ -16,10 +16,6 @@ public:
 
     AlaLedRgb();
 
-    void initPWM(byte pinsRed, byte pinGreen, byte pinBlue);
-    void initPWM(int numLeds, byte *pins);
-    void initTLC5940(int numLeds, byte *pins);
-
     /**
     * Initializes WS2812 LEDs. It be invoked in the setup() function of the main Arduino sketch.
     *

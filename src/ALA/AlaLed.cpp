@@ -1,6 +1,5 @@
 #include "AlaLed.h"
 
-#include "ExtTlc5940.h"
 
 
 AlaLed::AlaLed()
@@ -10,52 +9,6 @@ AlaLed::AlaLed()
     animSeqLen = 0;
     lastRefreshTime = 0;
     refreshMillis = 1000/50;
-}
-
-
-
-void AlaLed::initPWM(byte pin)
-{
-    byte *pins_ = (byte *)malloc(1);
-    pins_[0] = pin;
-
-    initPWM(1, pins_);
-}
-
-
-void AlaLed::initPWM(int numLeds, byte *pins)
-{
-    this->driver = ALA_PWM;
-    this->numLeds = numLeds;
-    this->pins = pins;
-
-    for (int x=0; x<numLeds ; x++)
-    {
-        pinMode(pins[x], OUTPUT);
-    }
-
-    // allocate and clear leds array
-    leds = (byte *)malloc(numLeds);
-    memset(leds, 0, numLeds);
-}
-
-void AlaLed::initTLC5940(int numLeds, byte *pins)
-{
-    this->driver = ALA_TLC5940;
-    this->numLeds = numLeds;
-    this->pins = pins;
-
-    // allocate and clear leds array
-    leds = (byte *)malloc(numLeds);
-    memset(leds, 0, numLeds);
-
-    // call Tlc.init only once
-    static bool isTlcInit = false;
-    if(!isTlcInit)
-    {
-        Tlc.init(0);
-        isTlcInit=true;
-    }
 }
 
 
@@ -140,20 +93,6 @@ bool AlaLed::runAnimation()
     if (animFunc != NULL)
         (this->*animFunc)();
 
-    // update leds
-    if(driver==ALA_PWM)
-    {
-        for(int i=0; i<numLeds; i++)
-            analogWrite(pins[i], leds[i]);
-    }
-    else if(driver==ALA_TLC5940)
-    {
-        for(int i=0; i<numLeds; i++)
-            Tlc.set(pins[i], leds[i]*16);
-
-        Tlc.update();
-    }
-    
     return true;
 }
 

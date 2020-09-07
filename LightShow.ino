@@ -7,6 +7,16 @@
 
 #include "xtimer.h"
 
+//
+// If the processor is an ARM, then assume we're on a Due and pull
+// in the MIDIUSB library
+//
+
+#ifdef __arm__
+#define _MIDIUSB_
+#include "MIDIUSB.h"
+#endif
+
 
 /*  *********************************************************************
     *  MIDI note numbers (from the MIDI specification), but adjusted
@@ -465,9 +475,11 @@ void setup()
 
     //
     // Set up the MIDI port.  MIDI ports run at 31250 baud but are otherwise just plain
-    // serial ports!
+    // serial ports!    Only do this if we're not using USB
     //
+#ifndef _MIDIUSB_
     Serial3.begin(31250);
+#endif
 
 
     //
@@ -821,7 +833,10 @@ void handleMidiCommand(void)
 // MIDI has some shortcuts to handle pressing many notes at once, but this is basically what
 // all MIDI messages look like.
 //
+// This only applies to MIDI-over-serial.   USB is handled differently.
+//
 
+#ifndef _MIDIUSB_
 void procMidi(uint8_t c)
 {
     // Warning: if you print stuff out, we can drop characters on the MIDI port!
@@ -868,6 +883,8 @@ void procMidi(uint8_t c)
             break;
     }
 }
+#endif
+
 
 /*  *********************************************************************
     *  blinky()
@@ -944,8 +961,30 @@ void loop()
 
     //
     // Process received MIDI bytes
+    // What we do here depends on if we're using the MIDIUSB
+    // interface or the serial MIDI
     //
+#ifdef _MIDIUSB_
+    if (1) {
+        // In the case of USB MIDI, we just pull the packets from the MIDIUSB library
+        // and pretend like we got them over the serial port.
+        midiEventPacket_t rxMidi;
 
+        do {
+            rxMidi = MidiUSB.read();
+            if (rxMidi.header != 0) {
+                midiCmd = rxMidi.byte1;
+                midiNote = rxMidi.byte2;
+                midiVel = rxMidi.byte3;
+                handleMidiCommand();
+            }
+        } while (rxMidi.header != 0);
+    }
+#else
+    // In the case of serial port MIDI (like the E-MU interface), we get
+    // characters from the Serial3 port and feed them into the
+    // USB state machine.
+    
     if (Serial3.available()) {
         uint8_t c = Serial3.read();
 
@@ -955,6 +994,7 @@ void loop()
         
         procMidi(c);
     }
+#endif
 
     //
     // Run animations on all strips
