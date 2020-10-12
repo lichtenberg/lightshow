@@ -30,84 +30,137 @@
     *  The constants below reflect what Logic Pro calls them.
     ********************************************************************* */
 
-// Second octave (below middle C).  We don't bother with sharps and flats
+// First octave (below middle C).  
 // These note names should match up with the names in the piano roll sequencer
 // in Logic Pro X.
 
+#define NOTE_C0         24
+#define NOTE_C0S        25
+#define NOTE_D0         26
+#define NOTE_D0S        27
+#define NOTE_E0         28
+#define NOTE_F0         29
+#define NOTE_F0S        30
+#define NOTE_G0         31
+#define NOTE_G0S        32
+#define NOTE_A0         33
+#define NOTE_A0S        34
+#define NOTE_B0         35
+
+// Second octave (below middle C).  
+
 #define NOTE_C1         36
+#define NOTE_C1S        37
 #define NOTE_D1         38
+#define NOTE_D1S        39
 #define NOTE_E1         40
 #define NOTE_F1         41
+#define NOTE_F1S        42
 #define NOTE_G1         43
+#define NOTE_G1S        44
 #define NOTE_A1         45
+#define NOTE_A1S        46
 #define NOTE_B1         47
 
 // Third octave (also below Middle C)
 
 #define NOTE_C2         48
+#define NOTE_C2S        49
 #define NOTE_D2         50
+#define NOTE_D2S        51
 #define NOTE_E2         52
 #define NOTE_F2         53
+#define NOTE_F2S        54
 #define NOTE_G2         55
+#define NOTE_G2S        56
 #define NOTE_A2         57
+#define NOTE_A2S        58
 #define NOTE_B2         59
 
 // Fourth octave (where Middle C is)
 
 #define NOTE_C3         60
+#define NOTE_C3S        61
 #define NOTE_D3         62
+#define NOTE_D3S        63
 #define NOTE_E3         64
 #define NOTE_F3         65
+#define NOTE_F3S        66
 #define NOTE_G3         67
+#define NOTE_G3S        68
 #define NOTE_A3         69
+#define NOTE_A3S        70
 #define NOTE_B3         71
 
 // Fifth octave (above middle C)
 
 #define NOTE_C4         72
+#define NOTE_C4S        73
 #define NOTE_D4         74
+#define NOTE_D4S        75
 #define NOTE_E4         76
 #define NOTE_F4         77
+#define NOTE_F4S        78
 #define NOTE_G4         79
+#define NOTE_G4S        80
 #define NOTE_A4         81
+#define NOTE_A4S        82
 #define NOTE_B4         83
 
 // Sixth octave (above middle C)
 
 #define NOTE_C5         84
+#define NOTE_C5S        85
 #define NOTE_D5         86
-#define NOTE_E5         87
-#define NOTE_F5         88
-#define NOTE_G5         90
+#define NOTE_D5S        87
+#define NOTE_E5         88
+#define NOTE_F5         89
+#define NOTE_F5S        90
+#define NOTE_G5         91
+#define NOTE_G5S        92
 #define NOTE_A5         93
+#define NOTE_A5S        94
 #define NOTE_B5         95
 
 // Seventh octave (above middle C)
 
 #define NOTE_C6         96
+#define NOTE_C6S        97
 #define NOTE_D6         98
+#define NOTE_D6S        99
 #define NOTE_E6         100
 #define NOTE_F6         101
+#define NOTE_F6S        102
 #define NOTE_G6         103
+#define NOTE_G6S        104
 #define NOTE_A6         105
+#define NOTE_A6S        106
 #define NOTE_B6         107
 
 // Eighth octave (above middle C)
 
 #define NOTE_C7         108
+#define NOTE_C7S        109
 #define NOTE_D7         110
+#define NOTE_D7S        111
 #define NOTE_E7         112
 #define NOTE_F7         113
+#define NOTE_F7S        114
 #define NOTE_G7         115
+#define NOTE_G7S        116
 #define NOTE_A7         117
+#define NOTE_A7S        118
 #define NOTE_B7         119
 
 // Ninth Octave (above middle C)
 
 #define NOTE_C8         120
+#define NOTE_C8S        121
 #define NOTE_D8         122
+#define NOTE_D8S        123
 #define NOTE_E8         124
 #define NOTE_F8         125
+#define NOTE_F8S        126
 #define NOTE_G8         127
 
 
@@ -146,6 +199,7 @@ uint8_t midiCmd;                        // last received MIDI command
 uint8_t midiNote;                       // last received MIDI note
 uint8_t midiVel;                        // last received MIDI velocity
 
+int debug = 0;
 
 /*  *********************************************************************
     *  Timer Stuff.  Macros are in xtimer.h
@@ -274,60 +328,8 @@ int allLengths[MAXSTRIPS] = { 30, 30, 30, 30, 30, 30, 30, 30, 60 };
 
 
 
-/*  *********************************************************************
-    *  Amimation List.  This will eventually go away when we 
-    *  assign notes to animations.
-    *  TEST PROGRAM ONLY
-    ********************************************************************* */
 
-int animation = 0;
-int duration = 0;
 int palette = 0;
-
-int animList[] = {
-    ALA_MOVINGBARS,
-    ALA_ON,
-    ALA_OFF,
-    ALA_BLINK,
-    ALA_BLINKALT,
-    ALA_SPARKLE,
-    ALA_SPARKLE2,
-    ALA_STROBO,
-
-    ALA_SOUNDPULSE,
-
-    ALA_CYCLECOLORS,
-
-    ALA_PIXELSHIFTRIGHT,
-    ALA_PIXELSHIFTLEFT,
-    ALA_PIXELBOUNCE,
-    ALA_PIXELSMOOTHSHIFTRIGHT,
-    ALA_PIXELSMOOTHSHIFTLEFT,
-    ALA_PIXELSMOOTHBOUNCE,
-    ALA_COMET,
-    ALA_COMETCOL,
-    ALA_BARSHIFTRIGHT,
-    ALA_BARSHIFTLEFT,
-    ALA_MOVINGGRADIENT,
-    ALA_LARSONSCANNER,
-    ALA_LARSONSCANNER2,
-
-    ALA_FADEIN,
-    ALA_FADEOUT,
-    ALA_FADEINOUT,
-    ALA_GLOW,
-    ALA_PLASMA,
-
-    ALA_FADECOLORS,
-    ALA_FADECOLORSLOOP,
-    ALA_PIXELSFADECOLORS,
-    ALA_FLAME,
-
-    ALA_FIRE,
-    ALA_BOUNCINGBALLS,
-    ALA_BUBBLES
-};
-
 
 
 
@@ -341,6 +343,10 @@ int animList[] = {
 AlaColor alaPalWhite_[] = { 0xFFFFFF };
 AlaPalette alaPalWhite = { 1, alaPalWhite_ };
 
+// Create an array of 64 palettes.
+
+AlaColor alaColorWheel[64];
+AlaPalette alaWheelPalette[64];
 
 AlaSeq pulseOn[] = {
     {ALA_SOUNDPULSE, 150, 150, alaPalWhite},
@@ -354,43 +360,45 @@ AlaSeq pulseOff[] = {
     {ALA_ENDSEQ, 0, 0, NULL}
 };
 
-#define NUMANIM (sizeof(animList)/sizeof(int))
-
-int durationList[3] = {
-    1000,
-    2000,
-    5000
-};
-
-
-int curStrip = 0;
-int curAnim[4] = {0};
-int curDuration[4] = {1000,1000,1000,1000};
 
 /*  *********************************************************************
-    *  Palette List
+    *  colorFromVelocity(vel)
     *  
-    *  We do maintain a fixed set of palettes for the project.
-    *  It is easy to add more, and having a fixed set helps keep
-    *  the colors consistent.
+    *  Take a MIDI velocity (0-127) and turn it into an RGB
+    *  color along a simplified color wheel.
     *  
-    *  For now, our palette list is just the list of predefined
-    *  ones in ALA.
+    *  Returns a 24-bit RGB color
     ********************************************************************* */
 
-#define PALETTE_RGB     0               // These are indicies into the array.
-#define PALETTE_RAINBOW 1
-#define PALETTE_FIRE    2
-#define PALETTE_WHITE   3
+uint32_t colorFromVelocity(uint8_t vel)
+{
+    unsigned int wheel = vel*2;
+    unsigned int red,green,blue;
+    
+    wheel = 255 - wheel;
+    if (wheel < 85) {
+        red = 255-wheel*3;
+        green = 0;
+        blue = wheel*3;
+    } else if(wheel < 170) {
+        wheel -= 85;
+        red = 0;
+        green = wheel*3;
+        blue = 255-wheel*3;
+    } else {
+        wheel -= 170;
+        red = wheel*3;
+        green = 255-wheel*3;
+        blue = 0;
+    }
 
-AlaPalette paletteList[4] = {
-    alaPalRgb,
-    alaPalRainbow,
-    alaPalFire,
-    alaPalWhite
-};
+    if (red > 255) red = 255;
+    if (green > 255) green = 255;
+    if (blue > 255) blue = 255;
 
-
+    return ((red << 16) | (green << 8) | blue);
+    
+}
 
 /*  *********************************************************************
     *  setAnimation(strips, animation, speed, palette)
@@ -406,7 +414,7 @@ AlaPalette paletteList[4] = {
     *  value.
     ********************************************************************* */
 
-void setAnimation(unsigned int strips, int animation, int speed, int palette)
+void setAnimation(unsigned int strips, int animation, int speed, AlaPalette palette)
 {
     int i;
 
@@ -417,7 +425,7 @@ void setAnimation(unsigned int strips, int animation, int speed, int palette)
         // in "strips" we will AND that bit with the correspondig bit in (1<<i).
         // allowing us to test (check) if that particular bit is set.
         if ((strips & (1 << i)) != 0) {
-            allstrips[i]->forceAnimation(animation, speed, paletteList[palette]);
+            allstrips[i]->forceAnimation(animation, speed, palette);
         }
     }
 }
@@ -453,6 +461,16 @@ void setSequence(unsigned int strips, AlaSeq *sequence)
 void setup()
 {
     int i;
+
+    //
+    // Create the color wheel
+    //
+
+    for (unsigned int c = 0; c < 256; c += 4) {
+        alaColorWheel[c/4] = AlaColor(colorFromVelocity(c));
+        alaWheelPalette[c/4].numColors = 1;
+        alaWheelPalette[c/4].colors = &alaColorWheel[c/4];
+    }
 
     //
     // Set up our "timer", which lets us check to see how much time
@@ -495,7 +513,7 @@ void setup()
 
     // By default, run the "idle white" animation on all strips.
     // We can change this later if we want the art exhibit to start quietly.
-    setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, PALETTE_RGB);
+    setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, alaPalRgb);
 
 }
 
@@ -589,6 +607,42 @@ void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
 }
 
 
+//
+// convertVelocity(animationID, midivel)
+//
+// Given an ALA animation number, scale the MIDI velocity (how hard the key is struck)
+// int a sensible value for that animation to give us some
+// choice in the speed
+//
+
+int convertVelocity(int animationID, uint8_t midiVel)
+{
+    int vel = (int) midiVel;
+    // larger numbers for ALA mean slower animations
+    // but we would want higher MIDI velocities to mean faster animations.
+    // Choosing mid-scale (64), figure out an offset (+/- 63)
+    int offset = (64 - vel);
+    
+    switch (animationID) {
+        case ALA_BOUNCINGBALLS:
+        case ALA_MOVINGGRADIENT:
+        case ALA_PIXELSFADECOLORS:
+        case ALA_FADECOLORSLOOP:
+        case ALA_PLASMA:
+            return 1000 + (offset*8);
+            
+        case ALA_SPARKLE:
+        case ALA_MOVINGBARS:
+            return 1000 + (offset*12);
+
+        case ALA_COMET:
+            return 1000 + (offset*10);
+
+        default:
+            return 1000;
+    }
+}
+
 
 //
 // noteON : Process a MIDI NOTE ON
@@ -608,68 +662,249 @@ void noteOn(uint8_t chan, uint8_t note, uint8_t vel)
     // are represented in Logic Pro's Piano Roll screen
 
     // See the file "AnimationAssignments.numbers" for details on the assignments.
-  
 
     switch (note) {
-        case NOTE_G8:
-            setAnimation(ALLSTRIPS, ALA_OFF, 1000, PALETTE_RGB);
+
+        // ========================================================================
+        // OCTAVE 0
+        // ========================================================================
+
+        case NOTE_C0:
+            setAnimation(SPOKE0, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_C0S:
+            setAnimation(SPOKE1, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_D0:
+            setAnimation(SPOKE2, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_D0S:
+            setAnimation(SPOKE3, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_E0:
+            setAnimation(SPOKE4, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_F0:
+            setAnimation(SPOKE5, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_F0S:
+            setAnimation(SPOKE6, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_G0:
+            setAnimation(SPOKE7, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_G0S:
+            setAnimation(LEDRING, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case NOTE_A0:
+            setAnimation(ALLSTRIPS, ALA_SOUNDPULSE, 150, alaWheelPalette[vel/2]);
+            break;
+        case NOTE_A0S:
+            setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, alaPalRgb);
+            break;
+        case NOTE_B0:
+            setAnimation(ALLSTRIPS, ALA_OFF, 1000, alaPalRgb);
             break;
 
-        case NOTE_F8:
-            setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, PALETTE_RGB);
-            break;
+            // ==================================================================================
+            // OCTAVE 1
+            // ==================================================================================
 
-        case NOTE_E8:
-            setAnimation(LEDRING, ALA_OFF, 1000, PALETTE_RGB);
+        case NOTE_C1:
+            setAnimation(ALLSTRIPS, ALA_SPARKLE, convertVelocity(ALA_SPARKLE, vel), alaPalRgb);
             break;
+        case NOTE_C1S:
+            setAnimation(ALLSPOKES, ALA_MOVINGBARS, convertVelocity(ALA_MOVINGBARS, vel), alaPalRgb);
+            break;
+        case NOTE_D1:
+            setAnimation(ALLSPOKES, ALA_BOUNCINGBALLS, convertVelocity(ALA_BOUNCINGBALLS, vel), alaPalRgb);
+            break;
+        case NOTE_D1S:
+            setAnimation(ALLSPOKES, ALA_PLASMA, convertVelocity(ALA_PLASMA, vel), alaPalRgb);
+            break;
+        case NOTE_E1:
+            setAnimation(ALLSPOKES, ALA_FIRE, convertVelocity(ALA_FIRE, vel), alaPalFire);
+            break;
+        case NOTE_F1:
+            setAnimation(ALLSPOKES, ALA_MOVINGGRADIENT, convertVelocity(ALA_MOVINGGRADIENT, vel), alaPalRgb);
+            break;
+        case NOTE_F1S:
+            setAnimation(ALLSPOKES, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_G1:
+            setAnimation(ALLSPOKES, ALA_FADECOLORSLOOP, convertVelocity(ALA_FADECOLORSLOOP, vel), alaPalRgb);
+            break;
+        case NOTE_G1S:
+            setAnimation(ALLSPOKES, ALA_BUBBLES, convertVelocity(ALA_BUBBLES, vel), alaPalRgb);
+            break;
+        case NOTE_A1:
+            setAnimation(ALLSPOKES, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_A1S:
+            setAnimation(ALLSPOKES, ALA_LARSONSCANNER, convertVelocity(ALA_LARSONSCANNER, vel), alaPalRgb);
+            break;
+        case NOTE_B1:
+            setAnimation(LEDRING, ALA_LARSONSCANNER, convertVelocity(ALA_LARSONSCANNER, vel), alaPalRgb);
+            break;
+            
 
-        case NOTE_D8:
-            break;
+            // ==================================================================================
+            // OCTAVE 2
+            // ==================================================================================
 
-        case NOTE_C8:
-            setAnimation(LEDRING, ALA_FADEINOUT, 1000, PALETTE_RGB);
+        case NOTE_C2:
+            setAnimation(SPOKE0, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
             break;
+        case NOTE_C2S:
+            setAnimation(SPOKE1, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_D2:
+            setAnimation(SPOKE2, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_D2S:
+            setAnimation(SPOKE3, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_E2:
+            setAnimation(SPOKE4, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_F2:
+            setAnimation(SPOKE5, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_F2S:
+            setAnimation(SPOKE6, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_G2:
+            setAnimation(SPOKE7, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_G2S:
+            setAnimation(LEDRING, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
+            break;
+        case NOTE_A2:
+            break;
+        case NOTE_A2S:
+            break;
+        case NOTE_B2:
+            break;
+            
 
-        case NOTE_B7:
-            setAnimation(ALLSPOKES, ALA_MOVINGBARS, 1000, PALETTE_RGB);
-            break;
+            // ==================================================================================
+            // OCTAVE 3
+            // ==================================================================================
 
-        case NOTE_A7:
-            setAnimation(SPOKE0, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_C3:
+            setAnimation(SPOKE0, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
             break;
+        case NOTE_C3S:
+            setAnimation(SPOKE1, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_D3:
+            setAnimation(SPOKE2, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_D3S:
+            setAnimation(SPOKE3, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_E3:
+            setAnimation(SPOKE4, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_F3:
+            setAnimation(SPOKE5, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_F3S:
+            setAnimation(SPOKE6, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_G3:
+            setAnimation(SPOKE7, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_G3S:
+            setAnimation(LEDRING, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
+            break;
+        case NOTE_A3:
+            break;
+        case NOTE_A3S:
+            break;
+        case NOTE_B3:
+            break;
+            
+            // ==================================================================================
+            // OCTAVE 4
+            // ==================================================================================
 
-        case NOTE_G7:
-            setAnimation(SPOKE1, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_C4:
+            setAnimation(SPOKE0, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
             break;
+        case NOTE_C4S:
+            setAnimation(SPOKE1, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_D4:
+            setAnimation(SPOKE2, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_D4S:
+            setAnimation(SPOKE3, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_E4:
+            setAnimation(SPOKE4, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_F4:
+            setAnimation(SPOKE5, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_F4S:
+            setAnimation(SPOKE6, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_G4:
+            setAnimation(SPOKE7, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_G4S:
+            setAnimation(LEDRING, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
+            break;
+        case NOTE_A4:
+            break;
+        case NOTE_A4S:
+            break;
+        case NOTE_B4:
+            break;
+            
+            // ==================================================================================
+            // OCTAVE 5
+            // ==================================================================================
 
-        case NOTE_F7:
-            setAnimation(SPOKE2, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_C5:
+            setAnimation(SPOKE0, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_E7:
-            setAnimation(SPOKE3, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_C5S:
+            setAnimation(SPOKE1, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_D7:
-            setAnimation(SPOKE4, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_D5:
+            setAnimation(SPOKE2, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_C7:
-            setAnimation(SPOKE5, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_D5S:
+            setAnimation(SPOKE3, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_B6:
-            setAnimation(SPOKE6, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_E5:
+            setAnimation(SPOKE4, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_A6:
-            setAnimation(SPOKE7, ALA_SOUNDPULSE, 150, PALETTE_WHITE);
+        case NOTE_F5:
+            setAnimation(SPOKE5, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
-
-        case NOTE_G6:
+        case NOTE_F5S:
+            setAnimation(SPOKE6, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
             break;
+        case NOTE_G5:
+            setAnimation(SPOKE7, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
+            break;
+        case NOTE_G5S:
+            setAnimation(LEDRING, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
+            break;
+        case NOTE_A5:
+            break;
+        case NOTE_A5S:
+            break;
+        case NOTE_B5:
+            break;
+            
 
     }
+  
+
     
 }
 
@@ -913,9 +1148,92 @@ static void blinky(void)
 uint8_t midibuffer[100];
 int midiptr = 0;
 
+#define CONSOLEBUFSIZE 50
+static char consoleBuffer[CONSOLEBUFSIZE];
+static int consoleIdx = 0;
+
+static void processConsole(char *buf)
+{
+    char cmd;
+    char *tok;
+    int args[5];
+    int argcnt;
+    
+    Serial.print("Debug command: "); Serial.println(buf);
+
+    cmd = *buf++;
+
+    tok = strtok(buf," ");
+
+    for (argcnt = 0; argcnt < 5; argcnt++) args[argcnt] = 0;
+    
+    for (argcnt = 0; argcnt < 5; argcnt++) {
+        if (tok) {
+            args[argcnt] = atoi(tok);
+            tok = strtok(NULL, " ");
+        }
+        else  {
+            break;
+        }
+    }
+          
+
+    switch (cmd) {
+        case 'n':
+            Serial.print("MIDI note "); Serial.println(args[0]);
+            noteOn(0, (uint8_t) args[0], (argcnt > 1) ? args[1] : 64);
+            break;
+        case 'a':
+            Serial.print("Set strip "); Serial.print(args[0]);
+            Serial.print(" to "); Serial.println(args[1]);
+            setAnimation((1<<args[0]), args[1], (argcnt > 2) ? args[2] : 1000, alaPalRgb);
+            break;
+        case 'x':
+            Serial.println("All strips off");
+            setAnimation(ALLSTRIPS, ALA_OFF, 1000, alaPalRgb);
+            break;
+        case 'd':
+            debug = !debug;
+            Serial.println(debug ? "Debug is ON" : "Debug is OFF");
+            break;
+        default:
+            Serial.println("Unrecognized command");
+            break;
+    }
+    
+    
+}
+
+
+static void processConsoleCharacter(char ch)
+{
+    switch (ch) {
+        case '\b':
+            if (consoleIdx > 0) {
+                consoleIdx--;
+                consoleBuffer[consoleIdx] = 0;
+            }
+            break;
+        case '\r':
+        case '\n':
+            consoleBuffer[consoleIdx] = 0;
+            processConsole(consoleBuffer);
+            consoleIdx = 0;
+            break;
+        default:
+            if (consoleIdx < (CONSOLEBUFSIZE-1)) {
+                consoleBuffer[consoleIdx++] = ch;
+                consoleBuffer[consoleIdx] = 0;
+            }
+            break;
+    }
+}
+
+
 void loop()
 {
     int i;
+    char ch;
 
     // Update the current number of milliseconds since start
     TIMER_UPDATE();
@@ -923,40 +1241,11 @@ void loop()
     // Blink the LED.
     blinky();
 
+    // Handle input from serial port for debugging.
     if (Serial.available()) {
-        switch (Serial.read()) {
-            case '0':  curStrip = 0; break;
-            case '1':  curStrip = 1; break;
-            case '2':  curStrip = 2; break;
-            case '3':  curStrip = 3; break;
-            case '4':  curStrip = 4; break;
-            case '5':  curStrip = 5; break;
-            case '6':  curStrip = 6; break;
-            case '7':  curStrip = 7; break;
-            case '8':  curStrip = 8; break;
-            case 'a':
-                animation++;
-                updateAnimation();
-                break;
-            case 'p':
-                palette++;
-                updateAnimation();
-                break;
-            case 'd':
-                duration++;
-                updateAnimation();
-                break;
-            case 'X':
-            {
-                int i;
-                for (i = 0; i< midiptr; i++) Serial.println(midibuffer[i],HEX);
-            }
-            break;
-            default:
-                break;
-        }
-
-        if (curStrip >= MAXSTRIPS) curStrip = 0;
+        ch = Serial.read();
+//        Serial.write(ch);
+        processConsoleCharacter(ch);
     }
 
     //
@@ -976,6 +1265,7 @@ void loop()
                 midiCmd = rxMidi.byte1;
                 midiNote = rxMidi.byte2;
                 midiVel = rxMidi.byte3;
+                if (debug) printMidi();
                 handleMidiCommand();
             }
         } while (rxMidi.header != 0);
@@ -1007,10 +1297,3 @@ void loop()
 
 }
 
-void updateAnimation()
-{
-    Serial.print("Updating strip "); Serial.print(curStrip); Serial.print(" to animation ");
-    Serial.print(animation); Serial.print(" with duration "); Serial.print(durationList[duration%3]);
-    Serial.print(" and palette "); Serial.println(palette);
-    allstrips[curStrip]->forceAnimation(animList[animation%NUMANIM], durationList[duration%3], paletteList[palette%3]);
-}
