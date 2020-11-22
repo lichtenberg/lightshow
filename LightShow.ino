@@ -17,6 +17,7 @@
 #include "MIDIUSB.h"
 #endif
 
+#define _DUAL_ARDUINO_
 
 /*  *********************************************************************
     *  MIDI note numbers (from the MIDI specification), but adjusted
@@ -214,6 +215,11 @@ static xtimer_t blinky_timer;
 static char blinky_onoff = 0;
 
 #define PIN_LED 13
+
+// Flow control for our special dual-Arduino MIDI setup that
+// uses a Pro Micro to process MIDI and the Uno to run the pixels
+#define PIN_DATA_AVAIL  8                 // input, '1' if there is MIDI data
+#define PIN_SEND_OK     9                 // output, '1' to send data
 
 
 /*  *********************************************************************
@@ -496,8 +502,17 @@ void setup()
     // serial ports!    Only do this if we're not using USB
     //
 #ifndef _MIDIUSB_
+#ifdef _DUAL_ARDUINO_
+    Serial3.begin(115200);
+    pinMode(PIN_DATA_AVAIL, INPUT);
+    pinMode(PIN_SEND_OK, OUTPUT);
+    digitalWrite(PIN_SEND_OK,0);
+    Serial.println("Dual-Arduino\n");
+#else
     Serial3.begin(31250);
 #endif
+#endif
+
 
 
     //
@@ -1230,6 +1245,49 @@ static void processConsoleCharacter(char ch)
 }
 
 
+void checkOtherArduino(void)
+{
+  uint8_t message[5];
+  size_t cnt;
+  bool handle = false;
+  static int state = 0;
+
+  while (digitalRead(PIN_DATA_AVAIL)) {
+  
+    digitalWrite(PIN_SEND_OK,1);
+
+    while (Serial3.available()) {
+      uint8_t b = Serial3.read();
+
+      switch (state) {
+        case 0: 
+          if (b == 0x55) state = 1;
+          break;
+        case 1:
+          if (b == 0xAA) state = 2;
+          else state = 0;
+          break;
+        case 2:
+          midiCmd = b;
+          state = 3;
+          break;
+        case 3:
+          midiNote = b;
+          state = 4;
+          break;
+        case 4:
+          midiVel = b;
+          digitalWrite(PIN_SEND_OK,0);
+          //printMidi();
+          handleMidiCommand();
+          state = 0;         
+      }
+    }
+  }
+
+  digitalWrite(PIN_SEND_OK,0);
+  
+}
 void loop()
 {
     int i;
@@ -1274,7 +1332,10 @@ void loop()
     // In the case of serial port MIDI (like the E-MU interface), we get
     // characters from the Serial3 port and feed them into the
     // USB state machine.
-    
+
+#ifdef _DUAL_ARDUINO_
+    checkOtherArduino();
+#else
     if (Serial3.available()) {
         uint8_t c = Serial3.read();
 
@@ -1284,6 +1345,7 @@ void loop()
         
         procMidi(c);
     }
+#endif
 #endif
 
     //
@@ -1296,4 +1358,3 @@ void loop()
 
 
 }
-
