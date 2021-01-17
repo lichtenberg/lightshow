@@ -7,198 +7,7 @@
 
 #include "xtimer.h"
 
-//
-// If the processor is an ARM, then assume we're on a Due and pull
-// in the MIDIUSB library
-//
 
-#ifdef __arm__
-#define _MIDIUSB_
-#include "MIDIUSB.h"
-#endif
-
-#define _DUAL_ARDUINO_
-
-/*  *********************************************************************
-    *  MIDI note numbers (from the MIDI specification), but adjusted
-    *  for what Logic Pro calls the octaves.
-    *  See: https://djip.co/blog/logic-studio-9-midi-note-numbers
-    *
-    *  Logic Pro's octaves are actually one lower than MIDI,
-    *  so C9 in the MIDI specification is called C8 on Logic Pro's
-    *  on screen keyboard.
-    *
-    *  The constants below reflect what Logic Pro calls them.
-    ********************************************************************* */
-
-// First octave (below middle C).  
-// These note names should match up with the names in the piano roll sequencer
-// in Logic Pro X.
-
-#define NOTE_C0         24
-#define NOTE_C0S        25
-#define NOTE_D0         26
-#define NOTE_D0S        27
-#define NOTE_E0         28
-#define NOTE_F0         29
-#define NOTE_F0S        30
-#define NOTE_G0         31
-#define NOTE_G0S        32
-#define NOTE_A0         33
-#define NOTE_A0S        34
-#define NOTE_B0         35
-
-// Second octave (below middle C).  
-
-#define NOTE_C1         36
-#define NOTE_C1S        37
-#define NOTE_D1         38
-#define NOTE_D1S        39
-#define NOTE_E1         40
-#define NOTE_F1         41
-#define NOTE_F1S        42
-#define NOTE_G1         43
-#define NOTE_G1S        44
-#define NOTE_A1         45
-#define NOTE_A1S        46
-#define NOTE_B1         47
-
-// Third octave (also below Middle C)
-
-#define NOTE_C2         48
-#define NOTE_C2S        49
-#define NOTE_D2         50
-#define NOTE_D2S        51
-#define NOTE_E2         52
-#define NOTE_F2         53
-#define NOTE_F2S        54
-#define NOTE_G2         55
-#define NOTE_G2S        56
-#define NOTE_A2         57
-#define NOTE_A2S        58
-#define NOTE_B2         59
-
-// Fourth octave (where Middle C is)
-
-#define NOTE_C3         60
-#define NOTE_C3S        61
-#define NOTE_D3         62
-#define NOTE_D3S        63
-#define NOTE_E3         64
-#define NOTE_F3         65
-#define NOTE_F3S        66
-#define NOTE_G3         67
-#define NOTE_G3S        68
-#define NOTE_A3         69
-#define NOTE_A3S        70
-#define NOTE_B3         71
-
-// Fifth octave (above middle C)
-
-#define NOTE_C4         72
-#define NOTE_C4S        73
-#define NOTE_D4         74
-#define NOTE_D4S        75
-#define NOTE_E4         76
-#define NOTE_F4         77
-#define NOTE_F4S        78
-#define NOTE_G4         79
-#define NOTE_G4S        80
-#define NOTE_A4         81
-#define NOTE_A4S        82
-#define NOTE_B4         83
-
-// Sixth octave (above middle C)
-
-#define NOTE_C5         84
-#define NOTE_C5S        85
-#define NOTE_D5         86
-#define NOTE_D5S        87
-#define NOTE_E5         88
-#define NOTE_F5         89
-#define NOTE_F5S        90
-#define NOTE_G5         91
-#define NOTE_G5S        92
-#define NOTE_A5         93
-#define NOTE_A5S        94
-#define NOTE_B5         95
-
-// Seventh octave (above middle C)
-
-#define NOTE_C6         96
-#define NOTE_C6S        97
-#define NOTE_D6         98
-#define NOTE_D6S        99
-#define NOTE_E6         100
-#define NOTE_F6         101
-#define NOTE_F6S        102
-#define NOTE_G6         103
-#define NOTE_G6S        104
-#define NOTE_A6         105
-#define NOTE_A6S        106
-#define NOTE_B6         107
-
-// Eighth octave (above middle C)
-
-#define NOTE_C7         108
-#define NOTE_C7S        109
-#define NOTE_D7         110
-#define NOTE_D7S        111
-#define NOTE_E7         112
-#define NOTE_F7         113
-#define NOTE_F7S        114
-#define NOTE_G7         115
-#define NOTE_G7S        116
-#define NOTE_A7         117
-#define NOTE_A7S        118
-#define NOTE_B7         119
-
-// Ninth Octave (above middle C)
-
-#define NOTE_C8         120
-#define NOTE_C8S        121
-#define NOTE_D8         122
-#define NOTE_D8S        123
-#define NOTE_E8         124
-#define NOTE_F8         125
-#define NOTE_F8S        126
-#define NOTE_G8         127
-
-
-
-/*  *********************************************************************
-    *  MIDI messages (from the MIDI specification)
-    ********************************************************************* */
-
-#define MIDI_MSG_NOTE_OFF       0x08
-#define MIDI_MSG_NOTE_ON        0x09
-#define MIDI_MSG_POLYTOUCH      0x0A
-#define MIDI_MSG_CONTROL_CHANGE 0x0B
-#define MIDI_MSG_PROGRAM_CHANGE 0x0C
-#define MIDI_MSG_CHANNEL_PRESS  0x0D
-#define MIDI_MSG_PITCH_BEND     0x0E
-#define MIDI_MSG_SYSTEM         0x0F
-
-#define MIDI_MSG_COMMAND        0x80
-
-
-/*  *********************************************************************
-    *  MIDI receive state machine
-    *  This is for our Arduino sketch, it keeps track of 
-    *  where we are as we receive each MIDI message
-    ********************************************************************* */
-
-#define MIDI_RXSTATE_CMD 0              // next byte is a command
-#define MIDI_RXSTATE_NOTE 1             // next byte is a note number
-#define MIDI_RXSTATE_VEL 2              // next byte is a velocity
-uint8_t midiState = MIDI_RXSTATE_CMD;       // state we are in now
-
-//
-// These variables will hold the last received MIDI command,
-//
-uint8_t midiCmd;                        // last received MIDI command
-uint8_t midiNote;                       // last received MIDI note
-uint8_t midiVel;                        // last received MIDI velocity
 
 int debug = 0;
 
@@ -216,9 +25,9 @@ static char blinky_onoff = 0;
 
 #define PIN_LED 13
 
-// Flow control for our special dual-Arduino MIDI setup that
-// uses a Pro Micro to process MIDI and the Uno to run the pixels
-#define PIN_DATA_AVAIL  8                 // input, '1' if there is MIDI data
+// Flow control for our special dual-Arduino setup that
+// uses a Pro Micro to process message the Uno to run the pixels
+#define PIN_DATA_AVAIL  8                 // input, '1' if there is data
 #define PIN_SEND_OK     9                 // output, '1' to send data
 
 
@@ -338,11 +147,6 @@ int allLengths[MAXSTRIPS] = { 30, 30, 30, 30, 30, 30, 30, 30, 60 };
 int palette = 0;
 
 
-
-/*  *********************************************************************
-    *  Test progran stuff
-    *  This is just for our test program, not part of the MIDI thing.
-    ********************************************************************* */
 
 
 // Red,Green,Blue sequence
@@ -498,20 +302,15 @@ void setup()
     Serial.println("Lightshow at your command!");
 
     //
-    // Set up the MIDI port.  MIDI ports run at 31250 baud but are otherwise just plain
-    // serial ports!    Only do this if we're not using USB
+    // Set up the data port. 
     //
-#ifndef _MIDIUSB_
-#ifdef _DUAL_ARDUINO_
+
     Serial3.begin(115200);
     pinMode(PIN_DATA_AVAIL, INPUT);
     pinMode(PIN_SEND_OK, OUTPUT);
     digitalWrite(PIN_SEND_OK,0);
     Serial.println("Dual-Arduino\n");
-#else
-    Serial3.begin(31250);
-#endif
-#endif
+
 
 
 
@@ -532,608 +331,6 @@ void setup()
 
 }
 
-
-/*  *********************************************************************
-    *  MIDI Message Routines.
-    *  
-    *  The routines in this section are called for the various MIDI
-    *  messages that we receive.
-    *  
-    *  The most important ones that we are likely to deal with are
-    *  "Note ON" and "Note OFF", but we can handle other
-    *  message types just in case we want to make them 
-    *  meaningful in the future.
-    ********************************************************************* */
-
-//
-// controlChange:  Called when we receive a MIDI CONTROL CHANGE command
-//
-// These controls, shown below, are for the Akai MIDI controller.
-// This will go away soon, it is not needed anymore.
-// In the future the control changes will come from Logic, if needed
-// it's really not necessary for the art lightshow unless
-// there is something fancy we can do.
-// 
-
-void controlChange(uint8_t chan,uint8_t ctl,uint8_t val)
-{
-
-    // The "#ifdef" means "if defined", and is a preprocessor directive.
-    // in "C" you can use this to comment out blocks of code in a big batch
-    // In this case, since "NOTUSED" is in fact not defined, the "ifdef" will
-    // be FALSE, and none of this code will be included.
-    
-#ifdef NOTUSED    
-    int numAnim = sizeof(animList) / sizeof(int);
-    int cvalue = (int) val;
-    int newAnim;
-    int stripId;
-    char buf[50];
-
-    // controls 20-23 are the sliders
-    // 3, 9, 14, 15 are the knobs
-
-    switch (ctl) {
-        case 20:
-        case 21:
-        case 22:
-        case 23:
-
-            newAnim = cvalue / 3;
-            if (newAnim >= numAnim) {
-                Serial.println("anim out of range");
-                return;
-            }
-
-            stripId = ctl-20;
-
-            curAnim[stripId] = animList[newAnim];
-
-            snprintf(buf,sizeof(buf),"Strip %d anim is %d speed %d\n",stripId, curAnim[stripId],curDuration[stripId]);
-            Serial.print(buf);
-
-            allstrips[stripId]->forceAnimation(curAnim[stripId], curDuration[stripId], paletteList[palette%3]);
-            break;
-
-        case 3:
-        case 9:
-        case 14:
-        case 15:
-            stripId = 0;
-            if (ctl == 9) stripId = 1;
-            if (ctl == 14) stripId = 2;
-            if (ctl == 15) stripId = 3;
-
-            newAnim = (5120 - (cvalue * 40)) + 100;
-            if (newAnim < 100) newAnim = 100;
-
-            curDuration[stripId] = newAnim;
-
-            snprintf(buf,sizeof(buf),"Strip %d anim is %d speed %d\n",stripId, curAnim[stripId],curDuration[stripId]);
-            Serial.print(buf);
-
-//            allstrips[stripId]->setAnimation(curAnim[stripId], curDuration[stripId], paletteList[palette%3]);
-            allstrips[stripId]->forceAnimationSpeed(curDuration[stripId]);
-            break;
-    }
-
-#endif
-
-}
-
-
-//
-// convertVelocity(animationID, midivel)
-//
-// Given an ALA animation number, scale the MIDI velocity (how hard the key is struck)
-// int a sensible value for that animation to give us some
-// choice in the speed
-//
-
-int convertVelocity(int animationID, uint8_t midiVel)
-{
-    int vel = (int) midiVel;
-    // larger numbers for ALA mean slower animations
-    // but we would want higher MIDI velocities to mean faster animations.
-    // Choosing mid-scale (64), figure out an offset (+/- 63)
-    int offset = (64 - vel);
-    
-    switch (animationID) {
-        case ALA_BOUNCINGBALLS:
-        case ALA_MOVINGGRADIENT:
-        case ALA_PIXELSFADECOLORS:
-        case ALA_FADECOLORSLOOP:
-        case ALA_PLASMA:
-            return 1000 + (offset*8);
-            
-        case ALA_SPARKLE:
-        case ALA_MOVINGBARS:
-            return 1000 + (offset*12);
-
-        case ALA_COMET:
-            return 1000 + (offset*10);
-
-        default:
-            return 1000;
-    }
-}
-
-
-//
-// noteON : Process a MIDI NOTE ON
-//
-// When we receive a noteOn message, we will start an animation.   Which animation
-// we start and which strips we start it on depend on the note number being sent.
-//
-
-void noteOn(uint8_t chan, uint8_t note, uint8_t vel)
-{
-
-    // For now we will ignore the MIDI channel and the velocity,
-    // but we could definitely use these values to affect
-    // the animations in the future.
-
-    // we list the notes backwards from G8 (top octave) since that is how they
-    // are represented in Logic Pro's Piano Roll screen
-
-    // See the file "AnimationAssignments.numbers" for details on the assignments.
-
-    switch (note) {
-
-        // ========================================================================
-        // OCTAVE 0
-        // ========================================================================
-
-        case NOTE_C0:
-            setAnimation(SPOKE0, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_C0S:
-            setAnimation(SPOKE1, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_D0:
-            setAnimation(SPOKE2, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_D0S:
-            setAnimation(SPOKE3, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_E0:
-            setAnimation(SPOKE4, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_F0:
-            setAnimation(SPOKE5, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_F0S:
-            setAnimation(SPOKE6, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_G0:
-            setAnimation(SPOKE7, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_G0S:
-            setAnimation(LEDRING, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case NOTE_A0:
-            setAnimation(ALLSTRIPS, ALA_SOUNDPULSE, 150, alaWheelPalette[vel/2]);
-            break;
-        case NOTE_A0S:
-            setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, alaPalRgb);
-            break;
-        case NOTE_B0:
-            setAnimation(ALLSTRIPS, ALA_OFF, 1000, alaPalRgb);
-            break;
-
-            // ==================================================================================
-            // OCTAVE 1
-            // ==================================================================================
-
-        case NOTE_C1:
-            setAnimation(ALLSTRIPS, ALA_SPARKLE, convertVelocity(ALA_SPARKLE, vel), alaPalRgb);
-            break;
-        case NOTE_C1S:
-            setAnimation(ALLSPOKES, ALA_MOVINGBARS, convertVelocity(ALA_MOVINGBARS, vel), alaPalRgb);
-            break;
-        case NOTE_D1:
-            setAnimation(ALLSPOKES, ALA_BOUNCINGBALLS, convertVelocity(ALA_BOUNCINGBALLS, vel), alaPalRgb);
-            break;
-        case NOTE_D1S:
-            setAnimation(ALLSPOKES, ALA_PLASMA, convertVelocity(ALA_PLASMA, vel), alaPalRgb);
-            break;
-        case NOTE_E1:
-            setAnimation(ALLSPOKES, ALA_FIRE, convertVelocity(ALA_FIRE, vel), alaPalFire);
-            break;
-        case NOTE_F1:
-            setAnimation(ALLSPOKES, ALA_MOVINGGRADIENT, convertVelocity(ALA_MOVINGGRADIENT, vel), alaPalRgb);
-            break;
-        case NOTE_F1S:
-            setAnimation(ALLSPOKES, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_G1:
-            setAnimation(ALLSPOKES, ALA_FADECOLORSLOOP, convertVelocity(ALA_FADECOLORSLOOP, vel), alaPalRgb);
-            break;
-        case NOTE_G1S:
-            setAnimation(ALLSPOKES, ALA_BUBBLES, convertVelocity(ALA_BUBBLES, vel), alaPalRgb);
-            break;
-        case NOTE_A1:
-            setAnimation(ALLSPOKES, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_A1S:
-            setAnimation(ALLSPOKES, ALA_LARSONSCANNER, convertVelocity(ALA_LARSONSCANNER, vel), alaPalRgb);
-            break;
-        case NOTE_B1:
-            setAnimation(LEDRING, ALA_LARSONSCANNER, convertVelocity(ALA_LARSONSCANNER, vel), alaPalRgb);
-            break;
-            
-
-            // ==================================================================================
-            // OCTAVE 2
-            // ==================================================================================
-
-        case NOTE_C2:
-            setAnimation(SPOKE0, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_C2S:
-            setAnimation(SPOKE1, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_D2:
-            setAnimation(SPOKE2, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_D2S:
-            setAnimation(SPOKE3, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_E2:
-            setAnimation(SPOKE4, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_F2:
-            setAnimation(SPOKE5, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_F2S:
-            setAnimation(SPOKE6, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_G2:
-            setAnimation(SPOKE7, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_G2S:
-            setAnimation(LEDRING, ALA_COMET, convertVelocity(ALA_COMET, vel), alaPalRgb);
-            break;
-        case NOTE_A2:
-            break;
-        case NOTE_A2S:
-            break;
-        case NOTE_B2:
-            break;
-            
-
-            // ==================================================================================
-            // OCTAVE 3
-            // ==================================================================================
-
-        case NOTE_C3:
-            setAnimation(SPOKE0, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_C3S:
-            setAnimation(SPOKE1, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_D3:
-            setAnimation(SPOKE2, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_D3S:
-            setAnimation(SPOKE3, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_E3:
-            setAnimation(SPOKE4, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_F3:
-            setAnimation(SPOKE5, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_F3S:
-            setAnimation(SPOKE6, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_G3:
-            setAnimation(SPOKE7, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_G3S:
-            setAnimation(LEDRING, ALA_PIXELSFADECOLORS, convertVelocity(ALA_PIXELSFADECOLORS, vel), alaPalRgb);
-            break;
-        case NOTE_A3:
-            break;
-        case NOTE_A3S:
-            break;
-        case NOTE_B3:
-            break;
-            
-            // ==================================================================================
-            // OCTAVE 4
-            // ==================================================================================
-
-        case NOTE_C4:
-            setAnimation(SPOKE0, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_C4S:
-            setAnimation(SPOKE1, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_D4:
-            setAnimation(SPOKE2, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_D4S:
-            setAnimation(SPOKE3, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_E4:
-            setAnimation(SPOKE4, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_F4:
-            setAnimation(SPOKE5, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_F4S:
-            setAnimation(SPOKE6, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_G4:
-            setAnimation(SPOKE7, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_G4S:
-            setAnimation(LEDRING, ALA_PIXELSMOOTHSHIFTRIGHT, convertVelocity(ALA_PIXELSMOOTHSHIFTRIGHT, vel), alaPalRgb);
-            break;
-        case NOTE_A4:
-            break;
-        case NOTE_A4S:
-            break;
-        case NOTE_B4:
-            break;
-            
-            // ==================================================================================
-            // OCTAVE 5
-            // ==================================================================================
-
-        case NOTE_C5:
-            setAnimation(SPOKE0, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_C5S:
-            setAnimation(SPOKE1, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_D5:
-            setAnimation(SPOKE2, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_D5S:
-            setAnimation(SPOKE3, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_E5:
-            setAnimation(SPOKE4, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_F5:
-            setAnimation(SPOKE5, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_F5S:
-            setAnimation(SPOKE6, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_G5:
-            setAnimation(SPOKE7, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_G5S:
-            setAnimation(LEDRING, ALA_GLOW, convertVelocity(ALA_GLOW, vel), alaPalRgb);
-            break;
-        case NOTE_A5:
-            break;
-        case NOTE_A5S:
-            break;
-        case NOTE_B5:
-            break;
-            
-
-    }
-  
-
-    
-}
-
-//
-// noteOFF : Process a MIDI NOTE OFF
-//
-// We don't use this (yet) - in the future we might turn OFF certain amimations
-// when the note is released, so it will play as long as a note is held
-// and stop afterwards.   For example, if we had a strobe light
-// effect or other fast animation, it might make sense to represent this
-// on the piano roll as a long sustained note where the strobe stops when the note
-// is lifted.
-//
-
-void noteOff(uint8_t chan, uint8_t note, uint8_t vel)
-{
-    // Nothing happening here yet.
-}
-
-//
-// printMidi : print out a received MIDI command to the serial port (for debug)
-// It is not used for anything else, see handleMidiCommand below for how we actually
-// "process" a MIDI message.
-//
-
-void printNoteName(uint8_t num)
-{
-    char notename[5];
-    char *ptr = notename;
-    char sharp;
-    
-    int octave = (num / 12)-2;
-    int note = (num % 12);
-
-    *ptr++ = "CCDDEFFGGAAB"[note];
-    sharp = " # #  # # # "[note];
-    if (sharp != ' ') *ptr++ = sharp;
-    if (octave >= 0) {
-        *ptr++ = "0123456789X"[octave];
-    } else {
-        *ptr++ = '-';
-        if (octave == -1)  *ptr++ = '1';
-        if (octave == -2)  *ptr++ = '2';
-    }
-    *ptr++ = 0;
-    Serial.print(notename);
-}
-
-void printMidi(void)
-{
-    uint8_t cmd = midiCmd >> 4;
-    uint8_t chan = midiCmd & 0x0F;
-    uint16_t bend;
-
-    // Hack: don't print note off messages.
-    //if (cmd == MIDI_MSG_NOTE_OFF) return;
-
-    Serial.print("Ch "); Serial.print(chan, DEC); Serial.print(":");
-    switch (cmd) {
-        case MIDI_MSG_NOTE_ON:
-            Serial.print("NoteOn  ");
-            Serial.print(midiNote, DEC);
-            Serial.print(" (");
-            printNoteName(midiNote);
-            Serial.print(") V");
-            Serial.println(midiVel, DEC);
-            break;
-        case MIDI_MSG_NOTE_OFF:
-            Serial.print("NoteOff ");
-            Serial.print(midiNote, DEC);
-            Serial.print(" (");
-            printNoteName(midiNote);
-            Serial.print(") V");
-            Serial.println(midiVel, DEC);
-            break;
-        case MIDI_MSG_POLYTOUCH:
-            Serial.print("Plytch  ");
-            Serial.print(midiNote, DEC);
-            Serial.print(" P");
-            Serial.println(midiVel, DEC);
-            break;
-        case MIDI_MSG_CONTROL_CHANGE:
-            Serial.print("CtlChg  ");
-            Serial.print(midiNote, DEC);
-            Serial.print("  ");
-            Serial.println(midiVel, DEC);
-            break;
-        case MIDI_MSG_PROGRAM_CHANGE:
-            Serial.print("PrgChg  ");
-            Serial.println(midiNote, DEC);
-            break;
-        case MIDI_MSG_CHANNEL_PRESS:
-            Serial.print("Chprss  ");
-            Serial.println(midiNote, DEC);
-            break;
-        case MIDI_MSG_PITCH_BEND:
-            bend = (((uint16_t) midiNote) << 7)|(uint16_t)midiVel;
-            Serial.print("Ptchbnd ");
-            Serial.println(bend, HEX);
-            break;
-        case MIDI_MSG_SYSTEM:
-        default:
-            Serial.print("Cmd: "); Serial.print(cmd, HEX); Serial.print(" ");
-            Serial.print(midiNote, HEX); Serial.print(" ");
-            Serial.println(midiVel, HEX);
-            break;
-    }
-}
-
-
-//
-// handleMidiCommand : Act on a complete received MIDI command
-//
-
-void handleMidiCommand(void)
-{
-    uint8_t cmd = midiCmd >> 4;
-    uint8_t chan = midiCmd & 0x0F;
-    uint16_t bend;
-
-    switch (cmd) {
-        case MIDI_MSG_NOTE_ON:
-            noteOn(chan,midiNote,midiVel);
-            break;
-        case MIDI_MSG_NOTE_OFF:
-            noteOff(chan,midiNote,midiVel);
-            break;
-        case MIDI_MSG_POLYTOUCH:
-            break;
-        case MIDI_MSG_CONTROL_CHANGE:
-            controlChange(chan,midiNote,midiVel);
-            break;
-        case MIDI_MSG_PROGRAM_CHANGE:
-            break;
-        case MIDI_MSG_CHANNEL_PRESS:
-            break;
-        case MIDI_MSG_PITCH_BEND:
-            break;
-        case MIDI_MSG_SYSTEM:
-        default:
-            break;
-    }
-}
-
-//
-// procMidi: process a byte received from the MIDI port.  When we have
-// a complete command, we will process it.  This routine forms something called
-// a "state machine", which uses a variable to tell us what data we expect to
-// recieve next.
-// 
-// MIDI messages look something like this:
-//
-//     <command> <note> <velocity>       That's 3 bytes.
-//
-// So, if you received  3 hex bytes   "93"  "40" "46"
-// that would mean "Note ON", "MIDI Channel 3", with a note number of E3 and a velocity of 100 (decimal).
-// As the bytes come in from the serial port, we need to know which piece is next - the command, the note,
-// or the velocity.  That's what "midiState" is for, it tells what *state* we are in.   This value changes
-// and also tells us when we have a complete MIDI message to process.
-//
-// MIDI has some shortcuts to handle pressing many notes at once, but this is basically what
-// all MIDI messages look like.
-//
-// This only applies to MIDI-over-serial.   USB is handled differently.
-//
-
-#ifndef _MIDIUSB_
-void procMidi(uint8_t c)
-{
-    // Warning: if you print stuff out, we can drop characters on the MIDI port!
-    //Serial.print("["); Serial.print(c,HEX); Serial.println("]");
-    //
-    // The upper bit is always set if this is a MIDI command.   If it is not set, then
-    // keep receiving notes using the previous command.   This is the shortcut mentioned above.
-    //
-    if (c & MIDI_MSG_COMMAND) {
-        midiCmd = c;
-        midiState = MIDI_RXSTATE_NOTE;
-        return;
-    }
-
-    //
-    // Otherwise, depending on what state we are in, decide what the byte from the
-    // serial stream is for.
-    //
-    
-    switch (midiState) {
-        case MIDI_RXSTATE_CMD:
-            // If it was a command, we already remembered it from the 'if' statement above.
-            break;
-            
-        case MIDI_RXSTATE_NOTE:
-            // If it is a note, remember the note, and set the state to say the next byte will be 'velocity'
-            midiNote = c;
-            midiState = MIDI_RXSTATE_VEL;
-            break;
-            
-        case MIDI_RXSTATE_VEL:
-            // If it's the velocity, then we go back to 'command' again.   Also, if it is
-            // velocity, we have a complete MIDI messsage so we can start handling it.
-            midiVel = c;
-            midiState = MIDI_RXSTATE_CMD;
-
-            // After we have received the velocity byte, we have a completed
-            // MIDI command.  Print it out (Debug) and
-            // act on it.
-            
-//            printMidi();                        // print it out (Debug)
-            handleMidiCommand();                // do something with it.
-                
-            break;
-    }
-}
-#endif
 
 
 /*  *********************************************************************
@@ -1156,12 +353,10 @@ static void blinky(void)
     *  loop()
     *  
     *  This is the main Arduino loop.  Handle characters 
-    *  received from either the MIDI or the serial port
+    *  received from either the Pro Micro or the serial port
     *  and change the animations accordingly
     ********************************************************************* */
 
-uint8_t midibuffer[100];
-int midiptr = 0;
 
 #define CONSOLEBUFSIZE 50
 static char consoleBuffer[CONSOLEBUFSIZE];
@@ -1194,10 +389,6 @@ static void processConsole(char *buf)
           
 
     switch (cmd) {
-        case 'n':
-            Serial.print("MIDI note "); Serial.println(args[0]);
-            noteOn(0, (uint8_t) args[0], (argcnt > 1) ? args[1] : 64);
-            break;
         case 'a':
             Serial.print("Set strip "); Serial.print(args[0]);
             Serial.print(" to "); Serial.println(args[1]);
@@ -1244,44 +435,70 @@ static void processConsoleCharacter(char ch)
     }
 }
 
+#define MSGSIZE 8
+#define STATE_SYNC1     0
+#define STATE_SYNC2     1
+#define STATE_RX        2
+
+static uint8_t message[MSGSIZE];
+static int rxstate = STATE_SYNC1;
+static int rxcount = 0;
+
+void handleMessage(uint8_t *message)
+{
+    unsigned int stripMask;
+    int animation, speed, palette;
+
+    stripMask = ((unsigned int) message[0]) | (((unsigned int) message[1]) << 8);
+    animation = ((unsigned int) message[2]) | (((unsigned int) message[3]) << 8);
+    speed = ((unsigned int) message[4]) | (((unsigned int) message[5]) << 8);
+    palette = ((unsigned int) message[6]) | (((unsigned int) message[7]) << 8);
+
+#if 0
+    Serial.print("Msk ");
+    Serial.print(stripMask, HEX);
+    Serial.print("  anim ");
+    Serial.print(animation);
+    Serial.println("");
+#endif
+
+    setAnimation(stripMask, animation, speed, alaPalRgb);
+    
+}
 
 void checkOtherArduino(void)
 {
-  uint8_t message[5];
-  size_t cnt;
-  bool handle = false;
-  static int state = 0;
 
-  while (digitalRead(PIN_DATA_AVAIL)) {
+  while (digitalRead(PIN_DATA_AVAIL) || (rxstate != STATE_SYNC1)) {
   
     digitalWrite(PIN_SEND_OK,1);
 
     while (Serial3.available()) {
-      uint8_t b = Serial3.read();
+        uint8_t b = Serial3.read();
 
-      switch (state) {
-        case 0: 
-          if (b == 0x55) state = 1;
-          break;
-        case 1:
-          if (b == 0xAA) state = 2;
-          else state = 0;
-          break;
-        case 2:
-          midiCmd = b;
-          state = 3;
-          break;
-        case 3:
-          midiNote = b;
-          state = 4;
-          break;
-        case 4:
-          midiVel = b;
-          digitalWrite(PIN_SEND_OK,0);
-          //printMidi();
-          handleMidiCommand();
-          state = 0;         
-      }
+        switch (rxstate) {
+            case STATE_SYNC1: 
+                if (b == 0x55) rxstate = STATE_SYNC2;
+                break;
+            case STATE_SYNC2:
+                if (b == 0xAA) {
+                    rxcount = 0;
+                    rxstate = STATE_RX;
+                }
+                else {
+                  rxstate = STATE_SYNC1;
+                }
+                break;
+            case STATE_RX:
+                message[rxcount] = b;
+                rxcount++;
+                if (rxcount == MSGSIZE) {
+                    rxstate = STATE_SYNC1;
+                    digitalWrite(PIN_SEND_OK,0);
+                    handleMessage(message);
+                }
+                break;
+        }
     }
   }
 
@@ -1306,47 +523,11 @@ void loop()
         processConsoleCharacter(ch);
     }
 
-    //
-    // Process received MIDI bytes
-    // What we do here depends on if we're using the MIDIUSB
-    // interface or the serial MIDI
-    //
-#ifdef _MIDIUSB_
-    if (1) {
-        // In the case of USB MIDI, we just pull the packets from the MIDIUSB library
-        // and pretend like we got them over the serial port.
-        midiEventPacket_t rxMidi;
+    // 
+    // Check for data from our other Arduino, which is doing flow control for us.
+    // 
 
-        do {
-            rxMidi = MidiUSB.read();
-            if (rxMidi.header != 0) {
-                midiCmd = rxMidi.byte1;
-                midiNote = rxMidi.byte2;
-                midiVel = rxMidi.byte3;
-                if (debug) printMidi();
-                handleMidiCommand();
-            }
-        } while (rxMidi.header != 0);
-    }
-#else
-    // In the case of serial port MIDI (like the E-MU interface), we get
-    // characters from the Serial3 port and feed them into the
-    // USB state machine.
-
-#ifdef _DUAL_ARDUINO_
     checkOtherArduino();
-#else
-    if (Serial3.available()) {
-        uint8_t c = Serial3.read();
-
-        // Capture the first 100 received MIDI messages and
-        // print them out when we enter an "X" command over the serial port.
-        if (midiptr < sizeof(midibuffer)) midibuffer[midiptr++] = c;
-        
-        procMidi(c);
-    }
-#endif
-#endif
 
     //
     // Run animations on all strips
