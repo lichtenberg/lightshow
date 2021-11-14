@@ -39,14 +39,13 @@ public:
 
     void setAnimationSpeed(long speed);
 
+//    void setAnimation(int animation, long speed, unsigned int direction, AlaColor color);
+    void setAnimation(int animation, long speed, unsigned int direction, unsigned int option, AlaPalette palette, AlaColor color);
 
-    void setAnimation(int animation, long speed, AlaColor color);
-    void setAnimation(int animation, long speed, AlaPalette palette);
+//    void forceAnimation(int animation, long speed, unsigned int direction, AlaColor color);
+    void forceAnimation(int animation, long speed, unsigned int direction, unsigned int option, AlaPalette palette, AlaColor color);
 
-    void forceAnimation(int animation, long speed, AlaColor color);
-    void forceAnimation(int animation, long speed, AlaPalette palette);
-
-    void setAnimation(AlaSeq animSeq[]);
+//    void setAnimation(AlaSeq animSeq[]);
     int getAnimation();
 
     bool runAnimation();
@@ -68,6 +67,11 @@ private:
     // New animations for art project
     void soundPulse();
     void idleWhite();
+    void onePixel();
+    void pixelLine();
+    void grow();
+    void shrink();
+    void pixelMarch();
 
     void pixelShiftRight();
     void pixelShiftLeft();
@@ -104,6 +108,9 @@ private:
 
     int animation;
     long speed;
+    unsigned int option;
+    unsigned int direction;
+    AlaColor singleColor;
     AlaPalette palette;
     AlaSeq *animSeq;
     int animSeqLen;

@@ -44,6 +44,13 @@ along with The Arduino ALA library.  If not, see
 // New ALA sequences for art project
 #define ALA_SOUNDPULSE 108
 #define ALA_IDLEWHITE 109
+#define ALA_ONEPIXEL 110
+#define ALA_PIXELLINE 111
+
+#define ALA_GROW  112
+#define ALA_SHRINK 113
+
+#define ALA_PIXELMARCH 114
 
 // ----------------------------------------------------------------------------------
 

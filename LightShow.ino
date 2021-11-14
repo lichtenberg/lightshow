@@ -3,13 +3,53 @@
 // (C) 2020 Mitch Lichtenberg (both of them).
 //
 
+// Set STUDIO to 0 for the living room installation
+// Set STUDIO to 1 for the studio (development) installation
+
+#define STUDIO 0
+
+// zip -r Lightshow.zip ./Lightshow -x '*.git*'
+
 #include "src/ALA/AlaLedRgb.h"
 
 #include "xtimer.h"
 
+#define PAL_RGB         64
+#define PAL_RAINBOW     65
+#define PAL_RAINBOWSTRIPE 66
+#define PAL_PARTY       67
+#define PAL_HEAT        68
+#define PAL_FIRE        69
+#define PAL_COOL        70
+#define PAL_WHITE       71
+#define PAL_RED         80
+#define PAL_GREEN       82
+#define PAL_BLUE        84
 
 
 int debug = 0;
+
+#define MSGSIZE         16
+#define STATE_SYNC1     0
+#define STATE_SYNC2     1
+#define STATE_RX        2
+
+static int rxstate = STATE_SYNC1;
+static int rxcount = 0;
+
+typedef struct lsmessage_s {
+//    uint8_t     ls_sync[2];
+    uint16_t    ls_strips;
+    uint16_t    ls_anim;
+    uint16_t    ls_speed;
+    uint16_t    ls_option;
+    uint32_t    ls_color;
+    uint32_t    ls_reserved2;
+} lsmessage_t;
+
+static lsmessage_t message;
+
+
 
 /*  *********************************************************************
     *  Timer Stuff.  Macros are in xtimer.h
@@ -35,7 +75,7 @@ static char blinky_onoff = 0;
     *  LED Strips
     ********************************************************************* */
 
-#define MAXSTRIPS 9
+#define MAXSTRIPS 12
 
 AlaLedRgb rgbStrip0;            // These are the spokes
 AlaLedRgb rgbStrip1;
@@ -46,6 +86,9 @@ AlaLedRgb rgbStrip5;
 AlaLedRgb rgbStrip6;
 AlaLedRgb rgbStrip7;
 AlaLedRgb rgbStrip8;            // This is the ring
+AlaLedRgb rgbStrip9;            // Top perimeter
+AlaLedRgb rgbStrip10;           // Bottom perimeter
+AlaLedRgb rgbStrip11;           // Ringlets
 
 //
 // Constants to define each spoke
@@ -70,6 +113,9 @@ AlaLedRgb rgbStrip8;            // This is the ring
 #define SPOKE6  (1 << 6)
 #define SPOKE7  (1 << 7)
 #define LEDRING (1 << 8)
+#define TOP     (1 << 9)
+#define BOTTOM  (1 << 10)
+#define RINGLETS (1 << 11)
 
 //
 // Constants to represent groups of spokes
@@ -77,7 +123,7 @@ AlaLedRgb rgbStrip8;            // This is the ring
 //
 
 #define ALLSPOKES (SPOKE0 | SPOKE1 | SPOKE2 | SPOKE3 | SPOKE4 | SPOKE5 | SPOKE6 | SPOKE7)
-#define ALLSTRIPS (ALLSPOKES | LEDRING)
+#define ALLSTRIPS (ALLSPOKES | LEDRING | TOP | BOTTOM | RINGLETS)
 #define EVENSPOKES (SPOKE0 | SPOKE2 | SPOKE4 | SPOKE6)
 #define ODDSPOKES (SPOKE1 | SPOKE3 | SPOKE5 | SPOKE7)
 
@@ -116,22 +162,67 @@ AlaLedRgb *allstrips[MAXSTRIPS] = {
     &rgbStrip5,
     &rgbStrip6,
     &rgbStrip7,
-    &rgbStrip8
+    &rgbStrip8,
+    &rgbStrip9,
+    &rgbStrip10,
+    &rgbStrip11       
 };
 
 //
 // This array contains the Arduino pin numbers that
 // correspond to each LED strip.
-//
+//?
 // There are 9 entries, representing each spoke (rgbStrip0 to rgbStrip7)
 // plus the last one (on pin 46) being the LED ring (rgbStrip8)
 //
+
+// The constants below show the mapping between the controller's breakout
+// boards and the Arduino pins
+
+#define PORT_A1         39
+#define PORT_A2         41
+#define PORT_A3         43
+#define PORT_A4         45
+#define PORT_A5         47
+#define PORT_A6         49
+#define PORT_A7         51
+#define PORT_A8         53
+
+#define PORT_B1         38
+#define PORT_B2         40
+#define PORT_B3         42
+#define PORT_B4         44
+#define PORT_B5         46
+#define PORT_B6         48
+#define PORT_B7         50
+#define PORT_B8         52
 
 // In the setup routine, we will make rgbStrip0 correspond to allPins[0] (which is 39),
 // and rgbStrip1 correspond to allPins[1], which is 41, etc.
 // using a nice 'for' loop to do them all at once.
 
-int allPins[MAXSTRIPS] = { 39, 41, 43, 45, 38, 40, 42, 44, 46};
+#if STUDIO
+// This is the mapping that is used in the studio
+int allPins[MAXSTRIPS] = { 39, 41, 43, 45, 38, 40, 42, 44, 46,
+                           47, 48, 51};
+#else
+// This is the mapping that we use on the actual star
+//int allPins[MAXSTRIPS] = { 41, 43, 45, 46, 48, 50, 52, 39, 47};
+int allPins[MAXSTRIPS] = {
+    PORT_A2,            // SPOKE1
+    PORT_A3,            // SPOKE2
+    PORT_A4,            // SPOKE3
+    PORT_B5,            // SPOKE4
+    PORT_B6,            // SPOKE5
+    PORT_B7,            // SPOKE6
+    PORT_B8,            // SPOKE7
+    PORT_A1,            // SPOKE8
+    PORT_A5,            // RING
+    PORT_A6,            // TOP
+    PORT_B4,            // BOTTOM
+    PORT_A7             // RINGLETS
+};
+#endif
 
 //
 // Similarly to allPins, allLengths[] is an array that tells us the size
@@ -139,76 +230,58 @@ int allPins[MAXSTRIPS] = { 39, 41, 43, 45, 38, 40, 42, 44, 46};
 // So, allLengths[0..7] = 30, and allLengths[8] is 60.
 //
 
-int allLengths[MAXSTRIPS] = { 30, 30, 30, 30, 30, 30, 30, 30, 60 };
+#if STUDIO
+// Studio version:  30 LEDs on the perimeter strips
+int allLengths[MAXSTRIPS] = {
+    30,                 // SPOKE1
+    30,                 // SPOKE2
+    30,                 // SPOKE3
+    30,                 // SPOKE4
+    30,                 // SPOKE5
+    30,                 // SPOKE6
+    30,                 // SPOKE7
+    30,                 // SPOKE8
+    60,                 // RING
+    30,                 // TOP
+    30,                 // BOTTOM
+    128,                // RINGLETS
+};
+#else
+// actual on-wall version: 130 LEDs on perimeter
+int allLengths[MAXSTRIPS] = {
+    30,                 // SPOKE1
+    30,                 // SPOKE2
+    30,                 // SPOKE3
+    30,                 // SPOKE4
+    30,                 // SPOKE5
+    30,                 // SPOKE6
+    30,                 // SPOKE7
+    30,                 // SPOKE8
+    60,                 // RING
+    130,                // TOP
+    130,                // BOTTOM
+    128                 // RINGLETS
+};
+#endif
 
+// Special "None" palette used for passing direct colors in.
+AlaColor alaPalNone_[] = { 0 };
+AlaPalette alaPalNone = { 0, alaPalNone_ };
 
-
-
-int palette = 0;
-
-
-
-
-// Red,Green,Blue sequence
 AlaColor alaPalWhite_[] = { 0xFFFFFF };
 AlaPalette alaPalWhite = { 1, alaPalWhite_ };
 
-// Create an array of 64 palettes.
+AlaColor alaPalRed_[] = { 0xFF0000 };
+AlaPalette alaPalRed = { 1, alaPalRed_ };
 
-AlaColor alaColorWheel[64];
-AlaPalette alaWheelPalette[64];
+AlaColor alaPalGreen_[] = { 0x00FF00 };
+AlaPalette alaPalGreen = { 1, alaPalGreen_ };
 
-AlaSeq pulseOn[] = {
-    {ALA_SOUNDPULSE, 150, 150, alaPalWhite},
-    {ALA_STOPSEQ, 0, 0, NULL},
-    {ALA_ENDSEQ, 0, 0, NULL}
-};
-
-AlaSeq pulseOff[] = {
-    {ALA_OFF, 10, 10, alaPalWhite},
-    {ALA_STOPSEQ, 0, 0, NULL},
-    {ALA_ENDSEQ, 0, 0, NULL}
-};
+AlaColor alaPalBlue_[] = { 0x0000FF };
+AlaPalette alaPalBlue = { 1, alaPalBlue_ };
 
 
-/*  *********************************************************************
-    *  colorFromVelocity(vel)
-    *  
-    *  Take a MIDI velocity (0-127) and turn it into an RGB
-    *  color along a simplified color wheel.
-    *  
-    *  Returns a 24-bit RGB color
-    ********************************************************************* */
 
-uint32_t colorFromVelocity(uint8_t vel)
-{
-    unsigned int wheel = vel*2;
-    unsigned int red,green,blue;
-    
-    wheel = 255 - wheel;
-    if (wheel < 85) {
-        red = 255-wheel*3;
-        green = 0;
-        blue = wheel*3;
-    } else if(wheel < 170) {
-        wheel -= 85;
-        red = 0;
-        green = wheel*3;
-        blue = 255-wheel*3;
-    } else {
-        wheel -= 170;
-        red = wheel*3;
-        green = 255-wheel*3;
-        blue = 0;
-    }
-
-    if (red > 255) red = 255;
-    if (green > 255) green = 255;
-    if (blue > 255) blue = 255;
-
-    return ((red << 16) | (green << 8) | blue);
-    
-}
 
 /*  *********************************************************************
     *  setAnimation(strips, animation, speed, palette)
@@ -224,7 +297,9 @@ uint32_t colorFromVelocity(uint8_t vel)
     *  value.
     ********************************************************************* */
 
-void setAnimation(unsigned int strips, int animation, int speed, AlaPalette palette)
+void setAnimation(unsigned int strips, int animation, int speed, unsigned int direction,
+                  unsigned int option, 
+                  AlaPalette palette, AlaColor color)
 {
     int i;
 
@@ -235,26 +310,7 @@ void setAnimation(unsigned int strips, int animation, int speed, AlaPalette pale
         // in "strips" we will AND that bit with the correspondig bit in (1<<i).
         // allowing us to test (check) if that particular bit is set.
         if ((strips & (1 << i)) != 0) {
-            allstrips[i]->forceAnimation(animation, speed, palette);
-        }
-    }
-}
-
-/*  *********************************************************************
-    *  setSequence(strips, sequence)
-    *  
-    *  This is similar to setAnimation above, but sets an ALA "Sequence"
-    *  which is ALA's way of describing a chain of animations.
-    *  We might change the way this works
-    ********************************************************************* */
-
-void setSequence(unsigned int strips, AlaSeq *sequence)
-{
-    int i;
-
-    for (i = 0; i < MAXSTRIPS; i++) {
-        if ((strips & (1 << i)) != 0) {
-            allstrips[i]->setAnimation(sequence);
+            allstrips[i]->forceAnimation(animation, speed, direction, option, palette, color);
         }
     }
 }
@@ -271,16 +327,6 @@ void setSequence(unsigned int strips, AlaSeq *sequence)
 void setup()
 {
     int i;
-
-    //
-    // Create the color wheel
-    //
-
-    for (unsigned int c = 0; c < 256; c += 4) {
-        alaColorWheel[c/4] = AlaColor(colorFromVelocity(c));
-        alaWheelPalette[c/4].numColors = 1;
-        alaWheelPalette[c/4].colors = &alaColorWheel[c/4];
-    }
 
     //
     // Set up our "timer", which lets us check to see how much time
@@ -301,6 +347,7 @@ void setup()
     delay(1000);                    // this delay is to make sure the serial monitor connects.
     Serial.println("Lightshow at your command!");
 
+
     //
     // Set up the data port. 
     //
@@ -310,9 +357,6 @@ void setup()
     pinMode(PIN_SEND_OK, OUTPUT);
     digitalWrite(PIN_SEND_OK,0);
     Serial.println("Dual-Arduino\n");
-
-
-
 
     //
     // Initialize all of the strips.  Remember the array we created?  Now we can use it to
@@ -325,9 +369,11 @@ void setup()
         allstrips[i]->initWS2812(allLengths[i], allPins[i]);
     }
 
+    
     // By default, run the "idle white" animation on all strips.
     // We can change this later if we want the art exhibit to start quietly.
-    setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, alaPalRgb);
+    setAnimation(ALLSTRIPS, ALA_IDLEWHITE, 1000, 0, 0, alaPalRgb, 0);
+//    setAnimation(LEDRING, ALA_IDLEWHITE, 1000, 0, 0, alaPalRgb, 0);
 
 }
 
@@ -353,121 +399,79 @@ static void blinky(void)
     *  loop()
     *  
     *  This is the main Arduino loop.  Handle characters 
-    *  received from either the Pro Micro or the serial port
-    *  and change the animations accordingly
+    *  received from the Basic Micro
     ********************************************************************* */
 
-
-#define CONSOLEBUFSIZE 50
-static char consoleBuffer[CONSOLEBUFSIZE];
-static int consoleIdx = 0;
-
-static void processConsole(char *buf)
-{
-    char cmd;
-    char *tok;
-    int args[5];
-    int argcnt;
-    
-    Serial.print("Debug command: "); Serial.println(buf);
-
-    cmd = *buf++;
-
-    tok = strtok(buf," ");
-
-    for (argcnt = 0; argcnt < 5; argcnt++) args[argcnt] = 0;
-    
-    for (argcnt = 0; argcnt < 5; argcnt++) {
-        if (tok) {
-            args[argcnt] = atoi(tok);
-            tok = strtok(NULL, " ");
-        }
-        else  {
-            break;
-        }
-    }
-          
-
-    switch (cmd) {
-        case 'a':
-            Serial.print("Set strip "); Serial.print(args[0]);
-            Serial.print(" to "); Serial.println(args[1]);
-            setAnimation((1<<args[0]), args[1], (argcnt > 2) ? args[2] : 1000, alaPalRgb);
-            break;
-        case 'x':
-            Serial.println("All strips off");
-            setAnimation(ALLSTRIPS, ALA_OFF, 1000, alaPalRgb);
-            break;
-        case 'd':
-            debug = !debug;
-            Serial.println(debug ? "Debug is ON" : "Debug is OFF");
-            break;
-        default:
-            Serial.println("Unrecognized command");
-            break;
-    }
-    
-    
-}
-
-
-static void processConsoleCharacter(char ch)
-{
-    switch (ch) {
-        case '\b':
-            if (consoleIdx > 0) {
-                consoleIdx--;
-                consoleBuffer[consoleIdx] = 0;
-            }
-            break;
-        case '\r':
-        case '\n':
-            consoleBuffer[consoleIdx] = 0;
-            processConsole(consoleBuffer);
-            consoleIdx = 0;
-            break;
-        default:
-            if (consoleIdx < (CONSOLEBUFSIZE-1)) {
-                consoleBuffer[consoleIdx++] = ch;
-                consoleBuffer[consoleIdx] = 0;
-            }
-            break;
-    }
-}
-
-#define MSGSIZE 8
-#define STATE_SYNC1     0
-#define STATE_SYNC2     1
-#define STATE_RX        2
-
-static uint8_t message[MSGSIZE];
-static int rxstate = STATE_SYNC1;
-static int rxcount = 0;
-
-void handleMessage(uint8_t *message)
+void handleMessage(lsmessage_t *msgp)
 {
     unsigned int stripMask;
-    int animation, speed, palette;
+    int animation, speed;
+    uint32_t palette;
+    unsigned int direction;
+    unsigned int option;
+    AlaPalette ap;
+    AlaColor color = 0;
 
-    stripMask = ((unsigned int) message[0]) | (((unsigned int) message[1]) << 8);
-    animation = ((unsigned int) message[2]) | (((unsigned int) message[3]) << 8);
-    speed = ((unsigned int) message[4]) | (((unsigned int) message[5]) << 8);
-    palette = ((unsigned int) message[6]) | (((unsigned int) message[7]) << 8);
+    stripMask = msgp->ls_strips;
+    animation = msgp->ls_anim;
+    speed = msgp->ls_speed;
+    // Use the top bit fo the animation to indicate the direction.
+    direction = (animation & 0x8000) ? 1 : 0;
+    animation = (animation & 0x7FFF);
+    palette = msgp->ls_color;
+    option = msgp->ls_option;
 
-#if 0
-    Serial.print("Msk ");
-    Serial.print(stripMask, HEX);
-    Serial.print("  anim ");
-    Serial.print(animation);
-    Serial.println("");
-#endif
+    if (palette & 0x1000000) {
+        ap = alaPalNone;
+        color = (palette & 0x00FFFFFF);
+    } else {
+        switch (palette) {
+            default:
+            case PAL_RGB:
+                ap = alaPalRgb;
+                break;
+            case PAL_RAINBOW:
+                ap = alaPalRainbow;
+                break;
+            case PAL_RAINBOWSTRIPE:
+                ap = alaPalRainbowStripe;
+                break;
+            case PAL_PARTY:
+                ap = alaPalParty;
+                break;
+            case PAL_HEAT:
+                ap = alaPalHeat;
+                break;
+            case PAL_FIRE:
+                ap = alaPalFire;
+                break;
+            case PAL_COOL:
+                ap = alaPalCool;
+                break;
+            case PAL_WHITE:
+                ap = alaPalWhite;
+                break;
+            case PAL_RED:
+                ap = alaPalRed;
+                break;
+            case PAL_GREEN:
+                ap = alaPalGreen;
+                break;
+            case PAL_BLUE:
+                ap = alaPalBlue;
+                break;
+        }
+    }
 
-    setAnimation(stripMask, animation, speed, alaPalRgb);
+    setAnimation(stripMask, animation, speed, direction, option, ap, color);
+
     
 }
+
 
 void checkOtherArduino(void)
 {
+  uint8_t *msgPtr = (uint8_t *) &message;
 
   while (digitalRead(PIN_DATA_AVAIL) || (rxstate != STATE_SYNC1)) {
   
@@ -490,12 +494,12 @@ void checkOtherArduino(void)
                 }
                 break;
             case STATE_RX:
-                message[rxcount] = b;
+                msgPtr[rxcount] = b;
                 rxcount++;
                 if (rxcount == MSGSIZE) {
                     rxstate = STATE_SYNC1;
                     digitalWrite(PIN_SEND_OK,0);
-                    handleMessage(message);
+                    handleMessage(&message);
                 }
                 break;
         }
@@ -508,20 +512,12 @@ void checkOtherArduino(void)
 void loop()
 {
     int i;
-    char ch;
 
     // Update the current number of milliseconds since start
     TIMER_UPDATE();
 
     // Blink the LED.
     blinky();
-
-    // Handle input from serial port for debugging.
-    if (Serial.available()) {
-        ch = Serial.read();
-//        Serial.write(ch);
-        processConsoleCharacter(ch);
-    }
 
     // 
     // Check for data from our other Arduino, which is doing flow control for us.

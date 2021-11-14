@@ -56,7 +56,8 @@ int AlaLedRgb::getCurrentRefreshRate()
 }
 
 
-void AlaLedRgb::forceAnimation(int animation, long speed, AlaColor color)
+
+void AlaLedRgb::forceAnimation(int animation, long speed, unsigned int direction, unsigned int option, AlaPalette palette, AlaColor color)
 {
     // delete any previously allocated array
     if (pxPos!=NULL)
@@ -66,50 +67,30 @@ void AlaLedRgb::forceAnimation(int animation, long speed, AlaColor color)
 
     this->animation = animation;
     this->speed = speed;
-
-    this->palette.numColors = 1;
-    this->palette.colors = (AlaColor*)malloc(3);
-    this->palette.colors[0] = color;
-
-    setAnimationFunc(animation);
-    animStartTime = millis();
-}
-
-void AlaLedRgb::setAnimation(int animation, long speed, AlaColor color)
-{
-    // is there any change?
-    if (this->animation == animation && this->speed == speed && this->palette.numColors == 1 && this->palette.colors[0] == color)
-        return;
-
-    forceAnimation(animation, speed, color);
-}
-
-
-void AlaLedRgb::forceAnimation(int animation, long speed, AlaPalette palette)
-{
-    // delete any previously allocated array
-    if (pxPos!=NULL)
-    { delete[] pxPos; pxPos=NULL; }
-    if (pxSpeed!=NULL)
-    { delete[] pxSpeed; pxSpeed=NULL; }
-
-    this->animation = animation;
-    this->speed = speed;
+    this->option = option;
     this->palette = palette;
+    this->direction = direction;
+
+    if (this->palette.numColors == 0) {
+        this->singleColor = color;
+        this->palette.colors = &(this->singleColor);
+        this->palette.numColors = 1;
+    }
 
     setAnimationFunc(animation);
     animStartTime = millis();
 }
 
-void AlaLedRgb::setAnimation(int animation, long speed, AlaPalette palette)
+void AlaLedRgb::setAnimation(int animation, long speed, unsigned int direction, unsigned int option, AlaPalette palette, AlaColor color)
 {
     // is there any change?
-    if (this->animation == animation && this->speed == speed && this->palette == palette)
-        return;
+//    if (this->animation == animation && this->speed == speed && this->palette == palette)
+//        return;
 
-    forceAnimation(animation, speed, palette);
+    forceAnimation(animation, speed, direction, option, palette, color);
 }
 
+#if 0
 void AlaLedRgb::setAnimation(AlaSeq animSeq[])
 {
     this->animSeq = animSeq;
@@ -121,8 +102,9 @@ void AlaLedRgb::setAnimation(AlaSeq animSeq[])
         animSeqDuration = animSeqDuration + animSeq[animSeqLen].duration;
     }
     animSeqStartTime = millis();
-    setAnimation(animSeq[0].animation, animSeq[0].speed, animSeq[0].palette);
+    setAnimation(animSeq[0].animation, animSeq[0].speed, 0, animSeq[0].palette);
 }
+#endif
 
 int AlaLedRgb::getAnimation()
 {
@@ -145,22 +127,6 @@ bool AlaLedRgb::runAnimation()
 
     lastRefreshTime = cTime;
 
-    // if it's a sequence we have to calculate the current animation
-    if (animSeqLen != 0)
-    {
-        long c = 0;
-        long t = (cTime-animSeqStartTime) % animSeqDuration;
-        for(int i=0; i<animSeqLen; i++)
-        {
-            if (t>=c && t<(c+animSeq[i].duration))
-            {
-                setAnimation(animSeq[i].animation, animSeq[i].speed, animSeq[i].palette);
-                break;
-            }
-            c = c + animSeq[i].duration;
-        }
-    }
-
 
     // run the animantion calculation
     if (animFunc != NULL)
@@ -169,8 +135,11 @@ bool AlaLedRgb::runAnimation()
     if(driver==ALA_WS2812)
     {
         // this is not really so smart...
-        for(int i=0; i<numLeds; i++)
-            neopixels->setPixelColor(i, neopixels->Color((leds[i].r*maxOut.r)>>8, (leds[i].g*maxOut.g)>>8, (leds[i].b*maxOut.b)>>8));
+        for(int i=0; i<numLeds; i++) {
+            // If the direction is backwards, reverse the order that we fill in the pixels
+            int ledidx = direction ? (numLeds-1-i) : i;
+            neopixels->setPixelColor(ledidx, neopixels->Color((leds[i].r*maxOut.r)>>8, (leds[i].g*maxOut.g)>>8, (leds[i].b*maxOut.b)>>8));
+        }
 
         neopixels->show();
     }
@@ -198,6 +167,11 @@ void AlaLedRgb::setAnimationFunc(int animation)
         // New sequences for art project
         case ALA_SOUNDPULSE:            animFunc = &AlaLedRgb::soundPulse;            break;
         case ALA_IDLEWHITE:             animFunc = &AlaLedRgb::idleWhite;             break;
+        case ALA_ONEPIXEL:              animFunc = &AlaLedRgb::onePixel;              break;
+        case ALA_PIXELLINE:             animFunc = &AlaLedRgb::pixelLine;             break;
+        case ALA_GROW:                  animFunc = &AlaLedRgb::grow;                  break;
+        case ALA_SHRINK:                animFunc = &AlaLedRgb::shrink;                break;
+        case ALA_PIXELMARCH:            animFunc = &AlaLedRgb::pixelMarch;            break;
 
         case ALA_PIXELSHIFTRIGHT:       animFunc = &AlaLedRgb::pixelShiftRight;       break;
         case ALA_PIXELSHIFTLEFT:        animFunc = &AlaLedRgb::pixelShiftLeft;        break;
@@ -569,6 +543,129 @@ void AlaLedRgb::soundPulse()
         leds[x] = c;
     }
 }
+
+void AlaLedRgb::onePixel()
+{
+    AlaColor c = palette.colors[0];
+
+    for(int x=0; x<numLeds; x++)
+    {
+        leds[x] = 0;
+    }
+
+    if (option < numLeds) {
+        leds[option] = c;
+    }
+}
+
+void AlaLedRgb::pixelLine()
+{
+    AlaColor c = palette.colors[0];
+    int pixlen = option;
+
+    if (pixlen > numLeds) pixlen = numLeds;
+
+    for(int x=0; x<numLeds; x++)
+    {
+        leds[x] = 0;
+    }
+
+    for(int x=0; x<pixlen; x++) {
+        leds[x] = c;
+    }
+}
+
+void AlaLedRgb::grow()
+{
+//    AlaColor c = palette.colors[0];
+    int numon;
+    long animtime;
+    int x;
+
+    // speed is the number of milliseconds to spread the animation out over.
+    // The # of pixels to light is therefore (currentTime/speed)*numpixels
+    animtime = millis() - animStartTime;
+
+    if (speed == 0) numon = numLeds;
+    else {
+        if (animtime >= speed) numon = numLeds;
+        else numon = (animtime * numLeds) / speed;
+    }
+
+    for (x = 0; x < numon; x++) {
+        leds[x] = palette.colors[x % palette.numColors];
+    }
+    for ( ; x < numLeds; x++) {
+        leds[x] = 0;
+    }
+
+
+}
+
+void AlaLedRgb::pixelMarch()
+{
+    AlaColor c = palette.colors[0];
+    AlaColor neighbors;
+    int numon;
+    long animtime;
+    int x;
+
+    // Start with nothing.
+    for(int x=0; x<numLeds; x++)
+    {
+        leds[x] = 0;
+    }
+
+    // speed is the number of milliseconds to spread the animation out over.
+    // The the index of the lit pixel is therefore (currentTime/speed)*numpixels
+    animtime = millis() - animStartTime;
+
+    if (speed == 0) numon = numLeds;
+    else {
+        if (animtime >= speed) numon = numLeds;
+        else numon = (animtime * numLeds) / speed;
+    }
+    // should not be needed.
+    if (numon >= numLeds) {
+        return;
+    }
+
+    // make the neighbors dimmer than the center one.
+    neighbors = c.scale(0.1);
+
+    if (numon > 1) leds[numon-1] = neighbors;
+    leds[numon] = c;
+    if (numon < (numLeds-1)) leds[numon+1] = neighbors;
+
+}
+
+void AlaLedRgb::shrink()
+{
+//    AlaColor c = palette.colors[0];
+    int numon;
+    long animtime;
+    int x;
+
+    // speed is the number of milliseconds to spread the animation out over.
+    // The # of pixels to light is therefore (currentTime/speed)*numpixels
+    animtime = millis() - animStartTime;
+
+    if (speed == 0) numon = numLeds;
+    else {
+        if (animtime >= speed) numon = numLeds;
+        else numon = (animtime * numLeds) / speed;
+    }
+
+    for (x = 0; x < numon; x++) {
+        leds[x] = 0;
+    }
+    for ( ; x < numLeds; x++) {
+        leds[x] = palette.colors[x % palette.numColors];
+    }
+
+
+}
+
 
 
 void AlaLedRgb::movingBars()
