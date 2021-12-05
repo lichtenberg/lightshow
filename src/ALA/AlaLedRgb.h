@@ -7,7 +7,6 @@
 
 /**
  *  AlaLedRgb can be used to drive a single or multiple RGB leds to perform animations.
- *  Available drivers are PWM pin, TLC5940, WS2811.
  */
 class AlaLedRgb
 {
@@ -22,7 +21,8 @@ public:
     * The type field can be used to set the RGB order and chipset frequency. Constants are ExtNeoPixel.h file.
     * It is set by default to NEO_GRB + NEO_KHZ800.
     */
-    void initWS2812(int numLeds, byte pin, byte type=NEO_GRB+NEO_KHZ800);
+//    void initWS2812(int numLeds, byte pin, byte type=NEO_GRB+NEO_KHZ800);
+    void initSubStrip(int startingLed, int numLeds, Adafruit_NeoPixel *pixels);
 
     /**
     * Sets the maximum brightness level.
@@ -101,9 +101,8 @@ private:
     void bubbles();
 
 
-    byte driver;    // type of led driver: ALA_PWM, ALA_TLC5940
-    byte *pins;     // pins where the leds are attached to
     AlaColor *leds; // array to store leds brightness values
+    int startingLed; // Index of the first LED
     int numLeds;    // number of leds
 
     int animation;

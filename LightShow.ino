@@ -1,13 +1,14 @@
 //
 // Lightshow Arduino Sketch
-// (C) 2020 Mitch Lichtenberg (both of them).
+// (C) 2020,2021 Mitch Lichtenberg (both of them).
 //
 
 // Set STUDIO to 0 for the living room installation
 // Set STUDIO to 1 for the studio (development) installation
 
-#define STUDIO 0
+#define STUDIO 1
 
+// Use this command to create archive
 // zip -r Lightshow.zip ./Lightshow -x '*.git*'
 
 #include "src/ALA/AlaLedRgb.h"
@@ -39,12 +40,12 @@ static int rxcount = 0;
 
 typedef struct lsmessage_s {
 //    uint8_t     ls_sync[2];
-    uint16_t    ls_strips;
+    uint16_t    ls_reserved;
     uint16_t    ls_anim;
     uint16_t    ls_speed;
     uint16_t    ls_option;
     uint32_t    ls_color;
-    uint32_t    ls_reserved2;
+    uint32_t    ls_strips;
 } lsmessage_t;
 
 static lsmessage_t message;
@@ -75,98 +76,13 @@ static char blinky_onoff = 0;
     *  LED Strips
     ********************************************************************* */
 
-#define MAXSTRIPS 12
-
-AlaLedRgb rgbStrip0;            // These are the spokes
-AlaLedRgb rgbStrip1;
-AlaLedRgb rgbStrip2;
-AlaLedRgb rgbStrip3;
-AlaLedRgb rgbStrip4;
-AlaLedRgb rgbStrip5;
-AlaLedRgb rgbStrip6;
-AlaLedRgb rgbStrip7;
-AlaLedRgb rgbStrip8;            // This is the ring
-AlaLedRgb rgbStrip9;            // Top perimeter
-AlaLedRgb rgbStrip10;           // Bottom perimeter
-AlaLedRgb rgbStrip11;           // Ringlets
-
-//
-// Constants to define each spoke
-// These are "bit masks", meaning there is exactly one bit set in each of these
-// numbers.  By using a bit mask, we can conveniently represent sets of small numbers
-// by treating each bit to mean "I am in this set".
-//
-// So, if you have a binary nunber 00010111, then bits 0,1,2, and 4 are set.
-// You could therefore use the binary number 00010111, which is 11 in decimal,
-// to mean "the set of 0, 1, 2, and 4"
-//
-// Define some shorthands for sets of strips.  We can add as many
-// as we want here.
-//
-
-#define SPOKE0  (1 << 0)        // Spokes, clockwise from top
-#define SPOKE1  (1 << 1)
-#define SPOKE2  (1 << 2)
-#define SPOKE3  (1 << 3)
-#define SPOKE4  (1 << 4)
-#define SPOKE5  (1 << 5)
-#define SPOKE6  (1 << 6)
-#define SPOKE7  (1 << 7)
-#define LEDRING (1 << 8)
-#define TOP     (1 << 9)
-#define BOTTOM  (1 << 10)
-#define RINGLETS (1 << 11)
-
-//
-// Constants to represent groups of spokes
-// It's easier than listing them out each time we use the same group.
-//
-
-#define ALLSPOKES (SPOKE0 | SPOKE1 | SPOKE2 | SPOKE3 | SPOKE4 | SPOKE5 | SPOKE6 | SPOKE7)
-#define ALLSTRIPS (ALLSPOKES | LEDRING | TOP | BOTTOM | RINGLETS)
-#define EVENSPOKES (SPOKE0 | SPOKE2 | SPOKE4 | SPOKE6)
-#define ODDSPOKES (SPOKE1 | SPOKE3 | SPOKE5 | SPOKE7)
-
-//
-// Additional sets we might want to define:
-// LEFTSPOKES, RIGHTSPOKES, TOPSPOKES, BOTTOMSPOKES
-//
+#define MAXPHYSICALSTRIPS 12
+#define MAXLOGICALSTRIPS 19
 
 
 /*  *********************************************************************
     *  Global Variables
     ********************************************************************* */
-
-//
-// This array is an "array of pointers" to the above LED strip ALA objects.
-// The reason we do this is so that we can
-// make loops that operate on more than one strip at a time.
-//
-//  allstrips[0] would therefore correspond to rgbStrip0,
-//  allstrips[1] would therefore correspond to rgbStrip1,  and so on.
-//
-// Having them in an array means we can use "for" loops and such
-// to do things to strips in bunches or all at the same time.
-//
-// Remember, thse aren't actually strips, they just "point" at the strips.
-//
-// Note that C arrays are 0 based, so our strips go from 0..8.
-// 
-
-AlaLedRgb *allstrips[MAXSTRIPS] = {
-    &rgbStrip0,
-    &rgbStrip1,
-    &rgbStrip2,
-    &rgbStrip3,
-    &rgbStrip4,
-    &rgbStrip5,
-    &rgbStrip6,
-    &rgbStrip7,
-    &rgbStrip8,
-    &rgbStrip9,
-    &rgbStrip10,
-    &rgbStrip11       
-};
 
 //
 // This array contains the Arduino pin numbers that
@@ -197,72 +113,134 @@ AlaLedRgb *allstrips[MAXSTRIPS] = {
 #define PORT_B7         50
 #define PORT_B8         52
 
-// In the setup routine, we will make rgbStrip0 correspond to allPins[0] (which is 39),
-// and rgbStrip1 correspond to allPins[1], which is 41, etc.
-// using a nice 'for' loop to do them all at once.
+// This struct describes a physical strip
+typedef struct PhysicalStrip_s {
+    uint8_t pin;                        // Pin number for strips
+    uint8_t length;                     // Number of actual pixels
+    Adafruit_NeoPixel *neopixels;       // Neopixel object.
+} PhysicalStrip_t;
+
+enum {
+    PHYS_SPOKE1 = 0,
+    PHYS_SPOKE2,
+    PHYS_SPOKE3,
+    PHYS_SPOKE4,
+    PHYS_SPOKE5,
+    PHYS_SPOKE6,
+    PHYS_SPOKE7,
+    PHYS_SPOKE8,
+    PHYS_RING,
+    PHYS_TOP,
+    PHYS_BOTTOM,
+    PHYS_RINGLETS
+};
 
 #if STUDIO
-// This is the mapping that is used in the studio
-int allPins[MAXSTRIPS] = { 39, 41, 43, 45, 38, 40, 42, 44, 46,
-                           47, 48, 51};
+PhysicalStrip_t physicalStrips[MAXPHYSICALSTRIPS] = {
+    [PHYS_SPOKE1] = { .pin = 39,   .length = 30 },         // SPOKE1
+    [PHYS_SPOKE2] = { .pin = 41,   .length = 30 },         // SPOKE2
+    [PHYS_SPOKE3] = { .pin = 43,   .length = 30 },         // SPOKE3
+    [PHYS_SPOKE4] = { .pin = 45,   .length = 30 },         // SPOKE4
+    [PHYS_SPOKE5] = { .pin = 38,   .length = 30 },         // SPOKE5
+    [PHYS_SPOKE6] = { .pin = 40,   .length = 30 },         // SPOKE6
+    [PHYS_SPOKE7] = { .pin = 42,   .length = 30 },         // SPOKE7
+    [PHYS_SPOKE8] = { .pin = 44,   .length = 30 },         // SPOKE8
+    [PHYS_RING]   = { .pin = 46,   .length = 60 },         // RING
+    [PHYS_TOP]    = { .pin = 47,   .length = 30 },         // TOP
+    [PHYS_BOTTOM] = { .pin = 48,   .length = 30 },         // BOTTOM
+    [PHYS_RINGLETS] = { .pin = 51, .length = 128 },        // RINGLETS
+};
 #else
-// This is the mapping that we use on the actual star
-//int allPins[MAXSTRIPS] = { 41, 43, 45, 46, 48, 50, 52, 39, 47};
-int allPins[MAXSTRIPS] = {
-    PORT_A2,            // SPOKE1
-    PORT_A3,            // SPOKE2
-    PORT_A4,            // SPOKE3
-    PORT_B5,            // SPOKE4
-    PORT_B6,            // SPOKE5
-    PORT_B7,            // SPOKE6
-    PORT_B8,            // SPOKE7
-    PORT_A1,            // SPOKE8
-    PORT_A5,            // RING
-    PORT_A6,            // TOP
-    PORT_B4,            // BOTTOM
-    PORT_A7             // RINGLETS
+PhysicalStrip_t physicalStrips[MAXPHYSICALSTRIPS] = {
+    [PHYS_SPOKE1] = { .pin = PORT_A2,   .length = 30 },         // SPOKE1
+    [PHYS_SPOKE2] = { .pin = PORT_A3,   .length = 30 },         // SPOKE2
+    [PHYS_SPOKE3] = { .pin = PORT_A4,   .length = 30 },         // SPOKE3
+    [PHYS_SPOKE4] = { .pin = PORT_B5,   .length = 30 },         // SPOKE4
+    [PHYS_SPOKE5] = { .pin = PORT_B6,   .length = 30 },         // SPOKE5
+    [PHYS_SPOKE6] = { .pin = PORT_B7,   .length = 30 },         // SPOKE6
+    [PHYS_SPOKE7] = { .pin = PORT_B8,   .length = 30 },         // SPOKE7
+    [PHYS_SPOKE8] = { .pin = PORT_A1,   .length = 30 },         // SPOKE8
+    [PHYS_RING] =   { .pin = PORT_A5,   .length = 60 },         // RING
+    [PHYS_TOP]    = { .pin = PORT_A6,   .length = 130 },        // TOP
+    [PHYS_BOTTOM] = { .pin = PORT_B4,   .length = 130 },        // BOTTOM
+    [PHYS_RINGLETS] = { .pin = PORT_A7, .length = 128 },        // RINGLETS
 };
 #endif
 
+
 //
-// Similarly to allPins, allLengths[] is an array that tells us the size
-// of each strip. For the rig on my desk, there are 30 LEDs per "spoke" and the 60 LED ring
-// So, allLengths[0..7] = 30, and allLengths[8] is 60.
+// OK, here are the "logical" strips, which can be composed from pieces of phyiscal strips.
 //
 
-#if STUDIO
-// Studio version:  30 LEDs on the perimeter strips
-int allLengths[MAXSTRIPS] = {
-    30,                 // SPOKE1
-    30,                 // SPOKE2
-    30,                 // SPOKE3
-    30,                 // SPOKE4
-    30,                 // SPOKE5
-    30,                 // SPOKE6
-    30,                 // SPOKE7
-    30,                 // SPOKE8
-    60,                 // RING
-    30,                 // TOP
-    30,                 // BOTTOM
-    128,                // RINGLETS
+//
+// Constants to define each spoke
+// These are "bit masks", meaning there is exactly one bit set in each of these
+// numbers.  By using a bit mask, we can conveniently represent sets of small numbers
+// by treating each bit to mean "I am in this set".
+//
+// So, if you have a binary nunber 00010111, then bits 0,1,2, and 4 are set.
+// You could therefore use the binary number 00010111, which is 11 in decimal,
+// to mean "the set of 0, 1, 2, and 4"
+//
+// Define some shorthands for sets of strips.  We can add as many
+// as we want here.
+//
+
+
+#define ALLSTRIPS ((1 << MAXLOGICALSTRIPS)-1)
+
+enum {
+    LOG_SPOKE1 = 0, LOG_SPOKE2, LOG_SPOKE3, LOG_SPOKE4,
+    LOG_SPOKE5, LOG_SPOKE6, LOG_SPOKE7, LOG_SPOKE8,
+
+    LOG_RING,
+    LOG_TOP,
+    LOG_BOTTOM,
+    LOG_RINGLET1,LOG_RINGLET2,LOG_RINGLET3,LOG_RINGLET4,
+    LOG_RINGLET5,LOG_RINGLET6,LOG_RINGLET7,LOG_RINGLET8,
 };
-#else
-// actual on-wall version: 130 LEDs on perimeter
-int allLengths[MAXSTRIPS] = {
-    30,                 // SPOKE1
-    30,                 // SPOKE2
-    30,                 // SPOKE3
-    30,                 // SPOKE4
-    30,                 // SPOKE5
-    30,                 // SPOKE6
-    30,                 // SPOKE7
-    30,                 // SPOKE8
-    60,                 // RING
-    130,                // TOP
-    130,                // BOTTOM
-    128                 // RINGLETS
+
+//
+// Additional sets we might want to define:
+// LEFTSPOKES, RIGHTSPOKES, TOPSPOKES, BOTTOMSPOKES
+//
+
+
+typedef struct LogicalStrip_s {
+    uint8_t     physical;               // which physical strip (index into array)
+    uint8_t     startingLed;            // starting LED within this strip
+    uint8_t     numLeds;                // number of LEDs (0 for whole strip)
+    AlaLedRgb *alaStrip;                // ALA object we created.
+} LogicalStrip_t;
+
+LogicalStrip_t logicalStrips[MAXLOGICALSTRIPS] = {
+    // The spokes just consume the whole strips
+    [LOG_SPOKE1] = { .physical = PHYS_SPOKE1, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE2] = { .physical = PHYS_SPOKE2, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE3] = { .physical = PHYS_SPOKE3, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE4] = { .physical = PHYS_SPOKE4, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE5] = { .physical = PHYS_SPOKE5, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE6] = { .physical = PHYS_SPOKE6, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE7] = { .physical = PHYS_SPOKE7, .startingLed = 0, .numLeds = 0},
+    [LOG_SPOKE8] = { .physical = PHYS_SPOKE8, .startingLed = 0, .numLeds = 0},
+
+    [LOG_RING] = { .physical = PHYS_RING, .startingLed = 0, .numLeds = 0},
+    [LOG_TOP]     = { .physical = PHYS_TOP, .startingLed = 0, .numLeds = 0},
+    [LOG_BOTTOM]  = { .physical = PHYS_BOTTOM, .startingLed = 0, .numLeds = 0},
+    [LOG_RINGLET1] = { .physical = PHYS_RINGLETS, .startingLed = 0, .numLeds = 16},
+    [LOG_RINGLET2] = { .physical = PHYS_RINGLETS, .startingLed = 16, .numLeds = 16},
+    [LOG_RINGLET3] = { .physical = PHYS_RINGLETS, .startingLed = 32, .numLeds = 16},
+    [LOG_RINGLET4] = { .physical = PHYS_RINGLETS, .startingLed = 48, .numLeds = 16},
+
+    [LOG_RINGLET5] = { .physical = PHYS_RINGLETS, .startingLed = 64, .numLeds = 16},
+    [LOG_RINGLET6] = { .physical = PHYS_RINGLETS, .startingLed = 80, .numLeds = 16},
+    [LOG_RINGLET7] = { .physical = PHYS_RINGLETS, .startingLed = 96, .numLeds = 16},
+    [LOG_RINGLET8] = { .physical = PHYS_RINGLETS, .startingLed = 112, .numLeds = 16},
 };
-#endif
+
+/*  *********************************************************************
+    *  Palettes
+    ********************************************************************* */
 
 // Special "None" palette used for passing direct colors in.
 AlaColor alaPalNone_[] = { 0 };
@@ -303,14 +281,14 @@ void setAnimation(unsigned int strips, int animation, int speed, unsigned int di
 {
     int i;
 
-    for (i = 0; i < MAXSTRIPS; i++) {
+    for (i = 0; i < MAXLOGICALSTRIPS; i++) {
         // the "1 << i" means "shift 1 by 'i' positions to the left.
         // So, if i has the value 3, 1<<3 will mean the value 00001000 (binary)
         // Next, the "&" operator is a bitwise AND - for each bit
         // in "strips" we will AND that bit with the correspondig bit in (1<<i).
         // allowing us to test (check) if that particular bit is set.
         if ((strips & (1 << i)) != 0) {
-            allstrips[i]->forceAnimation(animation, speed, direction, option, palette, color);
+            logicalStrips[i].alaStrip->forceAnimation(animation, speed, direction, option, palette, color);
         }
     }
 }
@@ -321,8 +299,6 @@ void setAnimation(unsigned int strips, int animation, int speed, unsigned int di
     *  
     *  Arduino SETUP routine - perform once-only initialization.
     ********************************************************************* */
-
-
 
 void setup()
 {
@@ -359,14 +335,33 @@ void setup()
     Serial.println("Dual-Arduino\n");
 
     //
-    // Initialize all of the strips.  Remember the array we created?  Now we can use it to
-    // set up all of the strips in a loop.  Here is where we set up each strip with its length
-    // and number of LEDs.
+    // Initialize all of the physical strips
     //
-    for (i = 0; i < MAXSTRIPS; i++) {
+    for (i = 0; i < MAXPHYSICALSTRIPS; i++) {
+        physicalStrips[i].neopixels =
+            new Adafruit_NeoPixel(physicalStrips[i].length,physicalStrips[i].pin, NEO_GRB+NEO_KHZ800);
+        if (!physicalStrips[i].neopixels) Serial.println("Out of memory creating physcial strips");
+        physicalStrips[i].neopixels->begin();
+    }
 
-        // Initialize the strip
-        allstrips[i]->initWS2812(allLengths[i], allPins[i]);
+    // Now init the logical strips, but map them 1:1 to the physical ones.
+    for (i = 0; i < MAXLOGICALSTRIPS; i++) {
+        uint8_t startingLed, numLeds;
+        // Create a new logical strip
+        AlaLedRgb *alaLed = new AlaLedRgb;
+        // If the logical strip's length is 0, it's the whole physical strip
+        if (!alaLed) Serial.println("Out of memory creating logical strips");
+        if (logicalStrips[i].numLeds == 0) {
+            startingLed = 0;
+            numLeds = physicalStrips[logicalStrips[i].physical].length;
+        } else {
+            startingLed = logicalStrips[i].startingLed;
+            numLeds = logicalStrips[i].numLeds;
+        }
+        alaLed->initSubStrip(startingLed,
+                             numLeds,
+                             physicalStrips[logicalStrips[i].physical].neopixels);        
+        logicalStrips[i].alaStrip = alaLed;
     }
 
     
@@ -529,8 +524,14 @@ void loop()
     // Run animations on all strips
     //
 
-    for (i = 0; i < MAXSTRIPS; i++) {
-        allstrips[i]->runAnimation();
+    // First compute new pixels on the LOGICAL Strips
+    for (i = 0; i < MAXLOGICALSTRIPS; i++) {
+        logicalStrips[i].alaStrip->runAnimation();
+    }
+
+    // Now send the data to the PHYSICAL strips
+    for (i = 0; i < MAXPHYSICALSTRIPS; i++) {
+        physicalStrips[i].neopixels->show();
     }
 
 

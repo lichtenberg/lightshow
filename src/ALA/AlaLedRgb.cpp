@@ -14,15 +14,37 @@ AlaLedRgb::AlaLedRgb()
     refreshMillis = 1000/50;
     pxPos = NULL;
     pxSpeed = NULL;
+    startingLed = 0;
+    numLeds = 0;
+    option = 0;
+    direction = 0;
+    animSeq = NULL;
+    animSeqLen = 0;
+    animSeqDuration = 0;
+    animFunc = NULL;
+    refreshRate = 0;
+    neopixels = NULL;
+    leds = NULL;
 }
 
 
+void AlaLedRgb::initSubStrip(int startingLed, int numLeds, Adafruit_NeoPixel *pixels)
+{
+    this->numLeds = numLeds;
+    this->startingLed = startingLed;
 
+    // allocate and clear leds array
+    leds = (AlaColor *)malloc(3*numLeds);
+    memset(leds, 0, 3*numLeds);
+
+    // Save reference to neopixel object
+    this->neopixels = pixels;
+}
+
+#if 0
 void AlaLedRgb::initWS2812(int numLeds, byte pin, byte type)
 {
-    this->driver = ALA_WS2812;
     this->numLeds = numLeds;
-    this->pins = 0;
 
     // allocate and clear leds array
     leds = (AlaColor *)malloc(3*numLeds);
@@ -32,6 +54,7 @@ void AlaLedRgb::initWS2812(int numLeds, byte pin, byte type)
 
     neopixels->begin();
 }
+#endif
 
 
 
@@ -90,21 +113,6 @@ void AlaLedRgb::setAnimation(int animation, long speed, unsigned int direction, 
     forceAnimation(animation, speed, direction, option, palette, color);
 }
 
-#if 0
-void AlaLedRgb::setAnimation(AlaSeq animSeq[])
-{
-    this->animSeq = animSeq;
-
-    // initialize animSeqDuration and animSeqLen variables
-    animSeqDuration = 0;
-    for(animSeqLen=0; animSeq[animSeqLen].animation!=ALA_ENDSEQ; animSeqLen++)
-    {
-        animSeqDuration = animSeqDuration + animSeq[animSeqLen].duration;
-    }
-    animSeqStartTime = millis();
-    setAnimation(animSeq[0].animation, animSeq[0].speed, 0, animSeq[0].palette);
-}
-#endif
 
 int AlaLedRgb::getAnimation()
 {
@@ -132,16 +140,15 @@ bool AlaLedRgb::runAnimation()
     if (animFunc != NULL)
         (this->*animFunc)();
 
-    if(driver==ALA_WS2812)
     {
         // this is not really so smart...
         for(int i=0; i<numLeds; i++) {
             // If the direction is backwards, reverse the order that we fill in the pixels
             int ledidx = direction ? (numLeds-1-i) : i;
-            neopixels->setPixelColor(ledidx, neopixels->Color((leds[i].r*maxOut.r)>>8, (leds[i].g*maxOut.g)>>8, (leds[i].b*maxOut.b)>>8));
+            neopixels->setPixelColor(startingLed+ledidx, neopixels->Color((leds[i].r*maxOut.r)>>8, (leds[i].g*maxOut.g)>>8, (leds[i].b*maxOut.b)>>8));
         }
 
-        neopixels->show();
+//        neopixels->show();
     }
 
     return true;
